@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Navbar from '@/components/Navbar'
 
 interface Organization {
   id: string
@@ -150,15 +151,7 @@ export default function OrganizationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/dashboard">
-            <Button variant="ghost">← Geri</Button>
-          </Link>
-          <h1 className="text-2xl font-bold">{organization.name}</h1>
-          <div></div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8">
         <Card className="mb-6">

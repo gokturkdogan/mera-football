@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Navbar from '@/components/Navbar'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -78,15 +79,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/dashboard">
-            <Button variant="ghost">← Geri</Button>
-          </Link>
-          <h1 className="text-2xl font-bold">Profil</h1>
-          <div></div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Card>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import Navbar from '@/components/Navbar'
 
 interface Match {
   id: string
@@ -165,13 +166,7 @@ export default function MatchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Link href={`/organization/${match.organization.id}`}>
-            <Button variant="ghost">← Geri</Button>
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8">
         <Card className="mb-6">

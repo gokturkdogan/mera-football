@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Navbar from '@/components/Navbar'
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -25,57 +25,11 @@ export default function Home() {
       .catch(() => {
         // Not logged in
       })
-      .finally(() => {
-        setLoading(false)
-      })
   }, [])
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    window.location.href = '/'
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
-      {/* Navigation */}
-      <nav className="bg-white/90 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
-              <span className="text-white font-bold text-2xl">⚽</span>
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              MeraFootball
-            </h1>
-          </Link>
-          <div className="flex items-center gap-4">
-            {loading ? (
-              <div className="text-sm text-gray-600">Yükleniyor...</div>
-            ) : user ? (
-              <>
-                <span className="text-sm text-gray-700 font-medium">{user.name}</span>
-                <Link href="/dashboard">
-                  <Button variant="outline" className="bg-white">Dashboard</Button>
-                </Link>
-                <Button variant="ghost" onClick={handleLogout}>
-                  Çıkış
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="ghost">Giriş Yap</Button>
-                </Link>
-                <Link href="/register">
-                  <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-                    Kayıt Ol
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-24 text-center relative overflow-hidden">
@@ -97,16 +51,26 @@ export default function Home() {
             </span>
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/register?role=PLAYER">
-              <Button size="lg" className="text-lg px-10 py-7 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-xl">
-                Oyuncu Olarak Başla
-              </Button>
-            </Link>
-            <Link href="/register?role=ADMIN">
-              <Button size="lg" variant="outline" className="text-lg px-10 py-7 border-2 border-green-600 text-green-600 hover:bg-green-50">
-                Yönetici Olarak Başla
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/profile">
+                <Button size="lg" className="text-lg px-10 py-7 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-xl">
+                  Profilime Git
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/register?role=PLAYER">
+                  <Button size="lg" className="text-lg px-10 py-7 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-xl">
+                    Oyuncu Olarak Başla
+                  </Button>
+                </Link>
+                <Link href="/register?role=ADMIN">
+                  <Button size="lg" variant="outline" className="text-lg px-10 py-7 border-2 border-green-600 text-green-600 hover:bg-green-50">
+                    Yönetici Olarak Başla
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -306,16 +270,26 @@ export default function Home() {
               Halısaha futbol organizasyonlarınızı kolayca yönetin ve oyuncu deneyimini geliştirin
             </p>
             <div className="flex gap-4 justify-center">
-              <Link href="/register?role=PLAYER">
-                <Button size="lg" variant="secondary" className="text-lg px-10 py-7 bg-white text-green-600 hover:bg-gray-100 font-semibold shadow-xl">
-                  Oyuncu Olarak Başla
-                </Button>
-              </Link>
-              <Link href="/register?role=ADMIN">
-                <Button size="lg" variant="outline" className="text-lg px-10 py-7 bg-transparent border-2 border-white text-white hover:bg-white/10 font-semibold">
-                  Yönetici Olarak Başla
-                </Button>
-              </Link>
+              {user ? (
+                <Link href="/profile">
+                  <Button size="lg" variant="secondary" className="text-lg px-10 py-7 bg-white text-green-600 hover:bg-gray-100 font-semibold shadow-xl">
+                    Profilime Git
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/register?role=PLAYER">
+                    <Button size="lg" variant="secondary" className="text-lg px-10 py-7 bg-white text-green-600 hover:bg-gray-100 font-semibold shadow-xl">
+                      Oyuncu Olarak Başla
+                    </Button>
+                  </Link>
+                  <Link href="/register?role=ADMIN">
+                    <Button size="lg" variant="outline" className="text-lg px-10 py-7 bg-transparent border-2 border-white text-white hover:bg-white/10 font-semibold">
+                      Yönetici Olarak Başla
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

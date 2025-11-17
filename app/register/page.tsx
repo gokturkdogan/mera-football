@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Navbar from '@/components/Navbar'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -60,7 +61,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      <Navbar />
+      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Kayıt Ol</CardTitle>
@@ -147,6 +150,7 @@ export default function RegisterPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

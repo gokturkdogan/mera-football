@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Navbar from '@/components/Navbar'
 
 export default function NewMatchPage() {
   const router = useRouter()
@@ -50,13 +51,7 @@ export default function NewMatchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Link href={`/organization/${formData.organizationId}`}>
-            <Button variant="ghost">← Geri</Button>
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Card>
