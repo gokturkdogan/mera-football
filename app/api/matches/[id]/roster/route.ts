@@ -67,10 +67,10 @@ export async function POST(
 
     const payload = verifyToken(token)
 
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload) {
       return NextResponse.json(
-        { error: 'Only admins can manage roster' },
-        { status: 403 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 

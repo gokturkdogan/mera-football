@@ -7,7 +7,7 @@ const createMatchSchema = z.object({
   organizationId: z.string(),
   date: z.string(),
   time: z.string(),
-  venue: z.string(),
+  venue: z.string().optional(),
   capacity: z.number().min(2),
 })
 
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
         organizationId: validatedData.organizationId,
         date: new Date(validatedData.date),
         time: validatedData.time,
-        venue: validatedData.venue,
+        venue: validatedData.venue || null,
         capacity: validatedData.capacity,
         status: 'DRAFT',
       },

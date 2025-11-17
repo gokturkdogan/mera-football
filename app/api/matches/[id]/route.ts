@@ -122,10 +122,10 @@ export async function PATCH(
 
     const payload = verifyToken(token)
 
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload) {
       return NextResponse.json(
-        { error: 'Only admins can update matches' },
-        { status: 403 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
@@ -145,6 +145,7 @@ export async function PATCH(
       where: { id: params.id },
       include: {
         organization: true,
+        roster: true,
       },
     })
 
@@ -162,11 +163,27 @@ export async function PATCH(
       )
     }
 
+    // Validate capacity if being updated
+    if (validatedData.capacity !== undefined) {
+      if (validatedData.capacity < 2) {
+        return NextResponse.json(
+          { error: 'Kapasite en az 2 olmalıdır' },
+          { status: 400 }
+        )
+      }
+      if (validatedData.capacity < match.roster.length) {
+        return NextResponse.json(
+          { error: `Kapasite, mevcut kadro sayısından (${match.roster.length}) küçük olamaz` },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData: any = {}
     if (validatedData.date) updateData.date = new Date(validatedData.date)
     if (validatedData.time) updateData.time = validatedData.time
-    if (validatedData.venue) updateData.venue = validatedData.venue
-    if (validatedData.capacity) updateData.capacity = validatedData.capacity
+    if (validatedData.venue !== undefined) updateData.venue = validatedData.venue || null
+    if (validatedData.capacity !== undefined) updateData.capacity = validatedData.capacity
     if (validatedData.status) updateData.status = validatedData.status
 
     const updatedMatch = await prisma.match.update({

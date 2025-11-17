@@ -92,7 +92,7 @@ model Match {
   organizationId  String
   date            DateTime
   time            String
-  venue           String
+  venue           String?
   capacity        Int
   status          MatchStatus @default(DRAFT)
   createdAt       DateTime    @default(now())
