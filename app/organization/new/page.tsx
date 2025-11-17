@@ -14,7 +14,6 @@ export default function NewOrganizationPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    plan: 'FREE',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

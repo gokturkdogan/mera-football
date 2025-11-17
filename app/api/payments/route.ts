@@ -13,7 +13,6 @@ const iyzipayConfig = {
 const iyzipay = new Iyzipay(iyzipayConfig)
 
 const createPaymentSchema = z.object({
-  organizationId: z.string(),
   plan: z.enum(['PREMIUM']),
   cardHolderName: z.string(),
   cardNumber: z.string(),
@@ -50,34 +49,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     validatedData = createPaymentSchema.parse(body)
 
-    // Check if organization exists and user is owner
-    const organization = await prisma.organization.findUnique({
-      where: { id: validatedData.organizationId },
-    })
-
-    if (!organization) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      )
-    }
-
-    if (organization.ownerId !== payload.userId) {
-      return NextResponse.json(
-        { error: 'Only organization owner can make payments' },
-        { status: 403 }
-      )
-    }
+    // Premium plan is admin-based, not organization-based
+    // Admin buys premium for all their organizations
 
     // Create payment request
     const request = {
       locale: 'tr',
-      conversationId: `ORG_${validatedData.organizationId}_${Date.now()}`,
+      conversationId: `ADMIN_${payload.userId}_${Date.now()}`,
       price: validatedData.price.toFixed(2),
       paidPrice: validatedData.price.toFixed(2),
       currency: 'TRY',
       installment: '1',
-      basketId: `BASKET_${validatedData.organizationId}`,
+      basketId: `BASKET_ADMIN_${payload.userId}`,
       paymentCard: {
         cardHolderName: validatedData.cardHolderName,
         cardNumber: validatedData.cardNumber.replace(/\s/g, ''),
@@ -141,7 +124,6 @@ export async function POST(request: NextRequest) {
     const payment = await prisma.payment.create({
       data: {
         userId: payload.userId,
-        organizationId: validatedData.organizationId,
         plan: validatedData.plan,
         amount: validatedData.price,
         status: paymentResult.status === 'success' ? 'COMPLETED' : 'FAILED',
@@ -150,13 +132,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update organization plan if payment successful
+    // Update admin's plan if payment successful
     if (paymentResult.status === 'success') {
-      await prisma.organization.update({
-        where: { id: validatedData.organizationId },
+      await prisma.user.update({
+        where: { id: payload.userId },
         data: {
           plan: 'PREMIUM',
-          maxPlayers: 999999,
         },
       })
     }
@@ -188,7 +169,6 @@ export async function POST(request: NextRequest) {
           await prisma.payment.create({
             data: {
               userId: payload.userId,
-              organizationId: validatedData.organizationId,
               plan: validatedData.plan,
               amount: validatedData.price,
               status: 'FAILED',
@@ -235,24 +215,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
-
-    const where: any = { userId: payload.userId }
-    if (organizationId) {
-      where.organizationId = organizationId
-    }
-
     const payments = await prisma.payment.findMany({
-      where,
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+      where: { userId: payload.userId },
       orderBy: {
         createdAt: 'desc',
       },

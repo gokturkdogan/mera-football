@@ -6,7 +6,6 @@ import { z } from 'zod'
 const createOrganizationSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  plan: z.enum(['FREE', 'PREMIUM']).default('FREE'),
 })
 
 // GET - List organizations (for player: their organizations, for admin: all their organizations)
@@ -45,6 +44,7 @@ export async function GET(request: NextRequest) {
                   id: true,
                   name: true,
                   email: true,
+                  plan: true,
                 },
               },
               _count: {
@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               email: true,
+              plan: true,
             },
           },
           _count: {
@@ -125,15 +126,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createOrganizationSchema.parse(body)
 
-    // Check plan limits
-    const maxPlayers = validatedData.plan === 'FREE' ? 10 : 999999
+    // Get admin's plan
+    const admin = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { plan: true },
+    })
+
+    const adminPlan = admin?.plan || 'FREE'
 
     const organization = await prisma.organization.create({
       data: {
         name: validatedData.name,
         description: validatedData.description,
-        plan: validatedData.plan,
-        maxPlayers,
         ownerId: payload.userId,
       },
       include: {

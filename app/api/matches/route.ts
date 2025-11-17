@@ -128,8 +128,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get admin's plan (not organization's plan)
+    const admin = await prisma.user.findUnique({
+      where: { id: organization.ownerId },
+      select: { plan: true },
+    })
+
+    const adminPlan = admin?.plan || 'FREE'
+
     // Check FREE plan limits (max 1 match per week)
-    if (organization.plan === 'FREE') {
+    if (adminPlan === 'FREE') {
       const matchDate = new Date(validatedData.date)
       const weekStart = new Date(matchDate)
       weekStart.setDate(weekStart.getDate() - weekStart.getDay())

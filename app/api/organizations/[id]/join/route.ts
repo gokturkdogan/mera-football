@@ -81,13 +81,22 @@ export async function POST(
       )
     }
 
+    // Get admin's plan
+    const admin = await prisma.user.findUnique({
+      where: { id: organization.ownerId },
+      select: { plan: true },
+    })
+
+    const adminPlan = admin?.plan || 'FREE'
+    const maxPlayers = adminPlan === 'FREE' ? 10 : 999999
+
     // Check organization capacity (for FREE plan)
     if (
-      organization.plan === 'FREE' &&
-      organization._count.members >= organization.maxPlayers
+      adminPlan === 'FREE' &&
+      organization._count.members >= maxPlayers
     ) {
       return NextResponse.json(
-        { error: 'Organization has reached maximum capacity' },
+        { error: 'Organization has reached maximum capacity (10 players for FREE plan)' },
         { status: 400 }
       )
     }

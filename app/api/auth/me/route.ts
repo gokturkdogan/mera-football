@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         name: true,
         phone: true,
         role: true,
+        plan: true,
         createdAt: true,
       },
     })

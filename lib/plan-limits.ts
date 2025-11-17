@@ -1,12 +1,12 @@
 import { prisma } from './prisma'
-import { OrganizationPlan } from '@prisma/client'
+import { AdminPlan } from '@prisma/client'
 
 export interface PlanLimits {
   maxPlayers: number
   maxMatchesPerWeek: number
 }
 
-export const PLAN_LIMITS: Record<OrganizationPlan, PlanLimits> = {
+export const PLAN_LIMITS: Record<AdminPlan, PlanLimits> = {
   FREE: {
     maxPlayers: 10,
     maxMatchesPerWeek: 1,
@@ -17,6 +17,26 @@ export const PLAN_LIMITS: Record<OrganizationPlan, PlanLimits> = {
   },
 }
 
+// Get admin's plan (check if they have active premium payment)
+export async function getAdminPlan(adminId: string): Promise<AdminPlan> {
+  const user = await prisma.user.findUnique({
+    where: { id: adminId },
+    select: { plan: true },
+  })
+
+  if (!user) {
+    return 'FREE'
+  }
+
+  return user.plan || 'FREE'
+}
+
+// Check if admin has premium plan
+export async function isAdminPremium(adminId: string): Promise<boolean> {
+  const plan = await getAdminPlan(adminId)
+  return plan === 'PREMIUM'
+}
+
 export async function checkOrganizationLimits(
   organizationId: string,
   action: 'ADD_PLAYER' | 'CREATE_MATCH'
@@ -24,6 +44,12 @@ export async function checkOrganizationLimits(
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
     include: {
+      owner: {
+        select: {
+          id: true,
+          plan: true,
+        },
+      },
       _count: {
         select: {
           members: {
@@ -40,13 +66,15 @@ export async function checkOrganizationLimits(
     return { allowed: false, reason: 'Organization not found' }
   }
 
-  const limits = PLAN_LIMITS[organization.plan]
+  // Get admin's plan (not organization's plan)
+  const adminPlan = organization.owner.plan || 'FREE'
+  const limits = PLAN_LIMITS[adminPlan]
 
   if (action === 'ADD_PLAYER') {
     if (organization._count.members >= limits.maxPlayers) {
       return {
         allowed: false,
-        reason: `Maximum ${limits.maxPlayers} players allowed for ${organization.plan} plan`,
+        reason: `Maximum ${limits.maxPlayers} players allowed for ${adminPlan} plan`,
       }
     }
   }
@@ -73,7 +101,7 @@ export async function checkOrganizationLimits(
       if (matchesThisWeek >= limits.maxMatchesPerWeek) {
         return {
           allowed: false,
-          reason: `Maximum ${limits.maxMatchesPerWeek} match per week allowed for ${organization.plan} plan`,
+          reason: `Maximum ${limits.maxMatchesPerWeek} match per week allowed for ${adminPlan} plan`,
         }
       }
     }
@@ -81,4 +109,3 @@ export async function checkOrganizationLimits(
 
   return { allowed: true }
 }
-

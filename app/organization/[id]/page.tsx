@@ -11,11 +11,11 @@ interface Organization {
   id: string
   name: string
   description: string | null
-  plan: string
   owner: {
     id: string
     name: string
     email: string
+    plan: string
   }
   members: Array<{
     id: string
@@ -162,7 +162,7 @@ export default function OrganizationPage() {
                 <CardDescription>{organization.description || 'Açıklama yok'}</CardDescription>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Plan: <span className={organization.plan === 'PREMIUM' ? 'text-yellow-600 font-semibold' : ''}>{organization.plan}</span></p>
+                <p className="text-sm text-gray-600">Plan: <span className={organization.owner.plan === 'PREMIUM' ? 'text-yellow-600 font-semibold' : ''}>{organization.owner.plan}</span></p>
                 <p className="text-sm text-gray-600">Üye Sayısı: {organization._count.members}</p>
               </div>
             </div>
@@ -179,9 +179,9 @@ export default function OrganizationPage() {
               </Button>
             )}
             {isOwner && (
-              <Link href={`/payment?organizationId=${organization.id}`}>
+              <Link href="/payment">
                 <Button className="w-full mb-2">
-                  {organization.plan === 'FREE' ? 'Premium Plana Geç' : 'Premium Aktif'}
+                  {organization.owner.plan === 'FREE' ? 'Premium Plana Geç' : 'Premium Aktif'}
                 </Button>
               </Link>
             )}

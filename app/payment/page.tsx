@@ -11,9 +11,7 @@ import Navbar from '@/components/Navbar'
 
 export default function PaymentPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
-    organizationId: searchParams?.get('organizationId') || '',
     cardHolderName: '',
     cardNumber: '',
     expireMonth: '',
@@ -47,8 +45,8 @@ export default function PaymentPage() {
         return
       }
 
-      alert('Ödeme başarılı! Premium plan aktif edildi.')
-      router.push(`/organization/${formData.organizationId}`)
+      alert('Ödeme başarılı! Premium plan aktif edildi. Artık tüm organizasyonlarınız Premium özelliklerine sahip!')
+      router.push('/profile')
     } catch (err) {
       setError('Bir hata oluştu')
       setLoading(false)

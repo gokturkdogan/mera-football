@@ -18,7 +18,9 @@ interface Organization {
   id: string
   name: string
   description: string | null
-  plan: string
+  owner: {
+    plan: string
+  }
   _count: {
     members: number
   }
@@ -119,8 +121,8 @@ export default function DashboardPage() {
                   <div className="space-y-2 mb-4">
                     <p className="text-sm">
                       <span className="font-semibold">Plan:</span>{' '}
-                      <span className={org.plan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}>
-                        {org.plan}
+                      <span className={org.owner.plan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}>
+                        {org.owner.plan}
                       </span>
                     </p>
                     <p className="text-sm">
