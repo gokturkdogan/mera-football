@@ -234,7 +234,7 @@ export default function DashboardPage() {
                     </Button>
                   </Link>
                 ) : (
-                  <Link href="/plans">
+                  <Link href="/organizations">
                     <Button size="lg" variant="outline">
                       Organizasyonları Keşfet
                     </Button>

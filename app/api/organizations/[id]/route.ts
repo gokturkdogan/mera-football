@@ -38,9 +38,6 @@ export async function GET(
           },
         },
         members: {
-          where: {
-            status: 'APPROVED',
-          },
           include: {
             user: {
               select: {
@@ -77,20 +74,20 @@ export async function GET(
       )
     }
 
-    // Check if user is member or owner
+    // Organization details are now public - all authenticated users can view
+    // Check if user is member or owner for additional actions
     const isMember = organization.members.some(
       (m) => m.userId === payload.userId
     )
     const isOwner = organization.ownerId === payload.userId
 
-    if (!isMember && !isOwner) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-
-    return NextResponse.json({ organization })
+    return NextResponse.json({ 
+      organization,
+      userAccess: {
+        isMember,
+        isOwner,
+      }
+    })
   } catch (error) {
     console.error('Get organization error:', error)
     return NextResponse.json(
