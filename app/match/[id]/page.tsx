@@ -365,8 +365,49 @@ export default function MatchPage() {
   const canRate = match.status === 'FINISHED' || match.status === 'PUBLISHED'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50">
       <Navbar />
+
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-8 shadow-lg">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-black mb-2">
+                {match.organization.name}
+              </h1>
+              <p className="text-lg sm:text-xl opacity-90">
+                {new Date(match.date).toLocaleDateString('tr-TR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })} - {match.time}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
+                match.status === 'FINISHED' 
+                  ? 'bg-green-500 text-white' 
+                  : match.status === 'UPCOMING' 
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-500 text-white'
+              }`}>
+                {match.status === 'FINISHED' ? '✅ Tamamlandı' : 
+                 match.status === 'UPCOMING' ? '📅 Yaklaşan' : 
+                 match.status === 'DRAFT' ? '📝 Taslak' : match.status}
+              </span>
+              {match.scores && (
+                <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border-2 border-white/30">
+                  <p className="text-3xl font-black text-center">
+                    {match.scores.teamAScore} - {match.scores.teamBScore}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="container mx-auto px-4 py-8">
         {/* Üst Kısım: Saha Krokisi (Sol) ve Maç Detayları (Sağ) */}
@@ -619,35 +660,36 @@ export default function MatchPage() {
 
           {/* Maç Detayları - Sağ */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Maç Detayları</CardTitle>
-                <CardDescription>
-                  {new Date(match.date).toLocaleDateString('tr-TR')} - {match.time}
-                </CardDescription>
+            <Card className="shadow-xl border-2 border-green-200 bg-white">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">📋</span>
+                  Maç Bilgileri
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-gray-500">Tarih</Label>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {new Date(match.date).toLocaleDateString('tr-TR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-500">Saat</Label>
-                    <p className="text-lg font-semibold text-gray-900">🕐 {match.time}</p>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  {/* Tarih ve Saat */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+                      <Label className="text-xs text-gray-600 mb-1 block">📅 Tarih</Label>
+                      <p className="text-sm font-bold text-gray-900">
+                        {new Date(match.date).toLocaleDateString('tr-TR', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                      <Label className="text-xs text-gray-600 mb-1 block">🕐 Saat</Label>
+                      <p className="text-sm font-bold text-gray-900">{match.time}</p>
+                    </div>
                   </div>
                   
                   {/* Venue Section - Editable */}
-                  <div className="border-t pt-4">
+                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm text-gray-500">Saha Adı</Label>
+                      <Label className="text-xs text-gray-600">🏟️ Saha Adı</Label>
                       {isOwner && match.status !== 'FINISHED' && (
                         <Button
                           variant="ghost"
@@ -660,8 +702,9 @@ export default function MatchPage() {
                               setShowVenueEdit(true)
                             }
                           }}
+                          className="h-6 w-6 p-0"
                         >
-                          {showVenueEdit ? 'İptal' : match.venue ? '✏️' : '➕'}
+                          {showVenueEdit ? '✕' : match.venue ? '✏️' : '➕'}
                         </Button>
                       )}
                     </div>
@@ -672,7 +715,7 @@ export default function MatchPage() {
                           placeholder="Saha adı girin..."
                           value={venueValue}
                           onChange={(e) => setVenueValue(e.target.value)}
-                          className="flex-1"
+                          className="flex-1 text-sm"
                         />
                         <Button
                           size="sm"
@@ -684,16 +727,16 @@ export default function MatchPage() {
                         </Button>
                       </div>
                     ) : (
-                      <p className={`text-sm font-semibold ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+                      <p className={`text-sm font-bold ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
                         {match.venue || 'Saha adı belirtilmemiş'}
                       </p>
                     )}
                   </div>
 
                   {/* Capacity Section - Editable */}
-                  <div className="border-t pt-4">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm text-gray-500">Kapasite</Label>
+                      <Label className="text-xs text-gray-600">👥 Kapasite</Label>
                       {isOwner && match.status !== 'FINISHED' && (
                         <Button
                           variant="ghost"
@@ -706,8 +749,9 @@ export default function MatchPage() {
                               setShowCapacityEdit(true)
                             }
                           }}
+                          className="h-6 w-6 p-0"
                         >
-                          {showCapacityEdit ? 'İptal' : '✏️'}
+                          {showCapacityEdit ? '✕' : '✏️'}
                         </Button>
                       )}
                     </div>
@@ -719,7 +763,7 @@ export default function MatchPage() {
                           max="22"
                           value={capacityValue}
                           onChange={(e) => setCapacityValue(parseInt(e.target.value) || 2)}
-                          className="flex-1"
+                          className="flex-1 text-sm"
                         />
                         <Button
                           size="sm"
@@ -731,41 +775,18 @@ export default function MatchPage() {
                         </Button>
                       </div>
                     ) : (
-                      <p className="text-lg font-semibold text-gray-900">
-                        👥 {match.capacity} oyuncu
+                      <div>
+                        <p className="text-2xl font-black text-green-700">
+                          {match.capacity}
+                        </p>
                         {match.roster.length > 0 && (
-                          <span className="text-sm text-gray-500 ml-2">
-                            ({match.roster.length} kayıtlı)
-                          </span>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {match.roster.length} oyuncu kayıtlı
+                          </p>
                         )}
-                      </p>
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="border-t pt-4">
-                    <Label className="text-sm text-gray-500">Durum</Label>
-                    <div className="mt-2">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                        match.status === 'FINISHED' 
-                          ? 'bg-green-100 text-green-800 border border-green-300' 
-                          : match.status === 'UPCOMING' 
-                          ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                          : 'bg-gray-100 text-gray-800 border border-gray-300'
-                      }`}>
-                        {match.status === 'FINISHED' ? '✅ Tamamlandı' : 
-                         match.status === 'UPCOMING' ? '📅 Yaklaşan' : 
-                         match.status === 'DRAFT' ? '📝 Taslak' : match.status}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {match.scores && (
-                    <div className="mt-4 p-4 bg-gray-100 rounded">
-                      <p className="text-2xl font-bold text-center">
-                        {match.scores.teamAScore} - {match.scores.teamBScore}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -776,40 +797,53 @@ export default function MatchPage() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Skor Girişi */}
           {isOwner && match.status !== 'FINISHED' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Skor Girişi</CardTitle>
+            <Card className="shadow-xl border-2 border-blue-200 bg-white">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">⚽</span>
+                  Skor Girişi
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {!showScoreForm ? (
-                  <Button onClick={() => setShowScoreForm(true)} className="w-full">Skor Gir</Button>
+                  <Button 
+                    onClick={() => setShowScoreForm(true)} 
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-lg py-6"
+                    size="lg"
+                  >
+                    Skor Gir
+                  </Button>
                 ) : (
                   <form onSubmit={handleSubmitScore} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Takım A Skoru</Label>
+                      <div className="space-y-2 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+                        <Label className="font-semibold">Takım A</Label>
                         <Input
                           type="number"
                           min="0"
                           value={scoreData.teamAScore}
                           onChange={(e) => setScoreData({ ...scoreData, teamAScore: parseInt(e.target.value) || 0 })}
+                          className="text-2xl font-bold text-center"
                           required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Takım B Skoru</Label>
+                      <div className="space-y-2 bg-gradient-to-br from-red-50 to-pink-50 p-4 rounded-xl border border-red-200">
+                        <Label className="font-semibold">Takım B</Label>
                         <Input
                           type="number"
                           min="0"
                           value={scoreData.teamBScore}
                           onChange={(e) => setScoreData({ ...scoreData, teamBScore: parseInt(e.target.value) || 0 })}
+                          className="text-2xl font-bold text-center"
                           required
                         />
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button type="submit" className="flex-1">Kaydet</Button>
-                      <Button type="button" variant="outline" onClick={() => setShowScoreForm(false)}>
+                      <Button type="submit" className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" size="lg">
+                        Kaydet
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setShowScoreForm(false)} size="lg">
                         İptal
                       </Button>
                     </div>
@@ -820,24 +854,38 @@ export default function MatchPage() {
           )}
 
           {/* Kadro Listesi */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Kadro Listesi</CardTitle>
+          <Card className="shadow-xl border-2 border-purple-200 bg-white">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">👥</span>
+                Kadro Listesi
+                <span className="ml-auto text-sm font-normal text-gray-600">
+                  ({match.roster.length}/{match.capacity})
+                </span>
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <CardContent className="pt-6">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {match.roster.length === 0 ? (
-                  <p className="text-gray-600 text-center py-4">Henüz kadro oluşturulmamış</p>
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-2">⚽</div>
+                    <p className="text-gray-600 font-medium">Henüz kadro oluşturulmamış</p>
+                  </div>
                 ) : (
                   match.roster.map((player) => (
-                    <div key={player.id} className="p-3 border rounded flex justify-between items-center hover:bg-gray-50 transition-colors">
-                      <div>
-                        <p className="font-semibold">{player.user.name}</p>
-                        {player.position && (
-                          <p className="text-xs text-gray-600">
-                            {player.position.replace('_', ' ').toUpperCase()}
-                          </p>
-                        )}
+                    <div key={player.id} className="p-4 border-2 rounded-xl flex justify-between items-center hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all hover:shadow-md border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                          {player.user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{player.user.name}</p>
+                          {player.position && (
+                            <p className="text-xs text-gray-600 font-medium">
+                              {player.position.replace('_', ' ').toUpperCase()}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       {isOwner && match.status !== 'FINISHED' && (
                         <Button
@@ -861,8 +909,9 @@ export default function MatchPage() {
                               alert('Bir hata oluştu')
                             }
                           }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          Çıkar
+                          ✕ Çıkar
                         </Button>
                       )}
                     </div>
@@ -874,19 +923,28 @@ export default function MatchPage() {
         </div>
 
         {canRate && isInRoster && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Oyuncu Puanlama</CardTitle>
+          <Card className="mb-6 shadow-xl border-2 border-yellow-200 bg-white">
+            <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">⭐</span>
+                Oyuncu Puanlama
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {!showRatingForm ? (
-                <Button onClick={() => setShowRatingForm(true)}>Oyuncu Puanla</Button>
+                <Button 
+                  onClick={() => setShowRatingForm(true)} 
+                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-lg py-6"
+                  size="lg"
+                >
+                  ⭐ Oyuncu Puanla
+                </Button>
               ) : (
                 <form onSubmit={handleSubmitRating} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Oyuncu Seç</Label>
+                  <div className="space-y-2 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+                    <Label className="font-semibold">Oyuncu Seç</Label>
                     <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="flex h-12 w-full rounded-lg border-2 border-blue-300 bg-white px-4 py-2 text-sm font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       value={ratingData.ratedUserId}
                       onChange={(e) => setRatingData({ ...ratingData, ratedUserId: e.target.value })}
                       required
@@ -901,28 +959,43 @@ export default function MatchPage() {
                         ))}
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Puan (1-5)</Label>
+                  <div className="space-y-2 bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
+                    <Label className="font-semibold">Puan (1-5)</Label>
                     <Input
                       type="number"
                       min="1"
                       max="5"
                       value={ratingData.rating}
                       onChange={(e) => setRatingData({ ...ratingData, rating: parseInt(e.target.value) || 5 })}
+                      className="text-2xl font-bold text-center"
                       required
                     />
+                    <div className="flex justify-center gap-1 mt-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={`text-2xl cursor-pointer ${star <= ratingData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                          onClick={() => setRatingData({ ...ratingData, rating: star })}
+                        >
+                          ⭐
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Yorum (Opsiyonel)</Label>
+                  <div className="space-y-2 bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200">
+                    <Label className="font-semibold">Yorum (Opsiyonel)</Label>
                     <textarea
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="flex min-h-[100px] w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200"
                       value={ratingData.comment}
                       onChange={(e) => setRatingData({ ...ratingData, comment: e.target.value })}
+                      placeholder="Oyuncu hakkında yorumunuz..."
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button type="submit">Kaydet</Button>
-                    <Button type="button" variant="outline" onClick={() => setShowRatingForm(false)}>
+                    <Button type="submit" className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" size="lg">
+                      Kaydet
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setShowRatingForm(false)} size="lg">
                       İptal
                     </Button>
                   </div>
@@ -933,19 +1006,41 @@ export default function MatchPage() {
         )}
 
         {match.ratings.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Puanlamalar</CardTitle>
+          <Card className="shadow-xl border-2 border-indigo-200 bg-white">
+            <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">⭐</span>
+                Puanlamalar ({match.ratings.length})
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
                 {match.ratings.map((rating) => (
-                  <div key={rating.id} className="p-2 border rounded">
-                    <p className="font-semibold">{rating.rater.name} → {rating.ratedUser.name}</p>
-                    <p className="text-sm">Puan: {'⭐'.repeat(rating.rating)}</p>
-                    {rating.comment && (
-                      <p className="text-sm text-gray-600">{rating.comment}</p>
-                    )}
+                  <div key={rating.id} className="p-4 border-2 rounded-xl bg-gradient-to-r from-white to-indigo-50 hover:shadow-md transition-all border-indigo-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {rating.rater.name.charAt(0).toUpperCase()}
+                          </div>
+                          <p className="font-bold text-gray-900">{rating.rater.name}</p>
+                          <span className="text-gray-400">→</span>
+                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {rating.ratedUser.name.charAt(0).toUpperCase()}
+                          </div>
+                          <p className="font-bold text-gray-900">{rating.ratedUser.name}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg">{'⭐'.repeat(rating.rating)}</span>
+                          <span className="text-sm text-gray-600">({rating.rating}/5)</span>
+                        </div>
+                        {rating.comment && (
+                          <p className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-gray-200 mt-2">
+                            "{rating.comment}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
