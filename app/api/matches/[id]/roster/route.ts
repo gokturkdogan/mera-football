@@ -128,7 +128,7 @@ export async function POST(
       )
     }
 
-    // Check if user is member of organization
+    // Check if user is member of organization OR is the organization owner
     const isMember = await prisma.organizationMember.findUnique({
       where: {
         userId_organizationId: {
@@ -139,11 +139,25 @@ export async function POST(
       },
     })
 
-    if (!isMember) {
+    const isOwner = match.organization.ownerId === userId
+
+    if (!isMember && !isOwner) {
       return NextResponse.json(
         { error: 'User is not a member of this organization' },
         { status: 400 }
       )
+    }
+
+    // If owner is not a member yet, create membership for them
+    if (isOwner && !isMember) {
+      await prisma.organizationMember.create({
+        data: {
+          userId: match.organization.ownerId,
+          organizationId: match.organizationId,
+          role: 'ADMIN',
+          status: 'APPROVED',
+        },
+      })
     }
 
     const rosterEntry = await prisma.matchRoster.create({

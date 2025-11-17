@@ -47,7 +47,8 @@ model User {
   // Relations
   organizations OrganizationMember[]
   createdOrganizations Organization[] @relation("OrganizationOwner")
-  matchRatings  MatchRating[]
+  matchRatingsAsRater  MatchRating[] @relation("Rater")
+  matchRatingsAsRated  MatchRating[] @relation("RatedUser")
   matchRosters  MatchRoster[]
   payments      Payment[]
 }
@@ -148,8 +149,8 @@ model MatchRating {
 
   // Relations
   match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  rater       User     @relation(fields: [raterId], references: [id], onDelete: Cascade)
-  ratedUser   User     @relation(fields: [ratedUserId], references: [id], onDelete: Cascade)
+  rater       User     @relation("Rater", fields: [raterId], references: [id], onDelete: Cascade)
+  ratedUser   User     @relation("RatedUser", fields: [ratedUserId], references: [id], onDelete: Cascade)
 
   @@unique([matchId, raterId, ratedUserId])
   @@index([matchId])

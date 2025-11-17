@@ -25,6 +25,9 @@ const createPaymentSchema = z.object({
 
 // POST - Create payment (iyzico)
 export async function POST(request: NextRequest) {
+  let validatedData: z.infer<typeof createPaymentSchema> | null = null
+  let payload: any = null
+
   try {
     const token = request.cookies.get('token')?.value
 
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const payload = verifyToken(token)
+    payload = verifyToken(token)
 
     if (!payload || payload.role !== 'ADMIN') {
       return NextResponse.json(
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const validatedData = createPaymentSchema.parse(body)
+    validatedData = createPaymentSchema.parse(body)
 
     // Check if organization exists and user is owner
     const organization = await prisma.organization.findUnique({
@@ -123,64 +126,82 @@ export async function POST(request: NextRequest) {
       ],
     }
 
-    // Make payment
-    iyzipay.payment.create(request, async (err: any, result: any) => {
-      if (err) {
-        console.error('Iyzico payment error:', err)
-        // Create failed payment record
-        await prisma.payment.create({
-          data: {
-            userId: payload.userId,
-            organizationId: validatedData.organizationId,
-            plan: validatedData.plan,
-            amount: validatedData.price,
-            status: 'FAILED',
-            iyzicoResponse: err,
-          },
-        })
-
-        return NextResponse.json(
-          { error: 'Payment failed', details: err },
-          { status: 400 }
-        )
-      }
-
-      // Create payment record
-      const payment = await prisma.payment.create({
-        data: {
-          userId: payload.userId,
-          organizationId: validatedData.organizationId,
-          plan: validatedData.plan,
-          amount: validatedData.price,
-          status: result.status === 'success' ? 'COMPLETED' : 'FAILED',
-          iyzicoPaymentId: result.paymentId,
-          iyzicoResponse: result,
-        },
-      })
-
-      // Update organization plan if payment successful
-      if (result.status === 'success') {
-        await prisma.organization.update({
-          where: { id: validatedData.organizationId },
-          data: {
-            plan: 'PREMIUM',
-            maxPlayers: 999999,
-          },
-        })
-      }
-
-      return NextResponse.json({
-        payment,
-        iyzicoResult: result,
+    // Make payment (wrap callback in Promise)
+    const paymentResult = await new Promise<any>((resolve, reject) => {
+      iyzipay.payment.create(request, (err: any, result: any) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(result)
+        }
       })
     })
 
-    // Note: This is a simplified version. In production, you should handle async callbacks properly
-    return NextResponse.json({ message: 'Payment processing...' })
+    // Create payment record
+    const payment = await prisma.payment.create({
+      data: {
+        userId: payload.userId,
+        organizationId: validatedData.organizationId,
+        plan: validatedData.plan,
+        amount: validatedData.price,
+        status: paymentResult.status === 'success' ? 'COMPLETED' : 'FAILED',
+        iyzicoPaymentId: paymentResult.paymentId,
+        iyzicoResponse: paymentResult,
+      },
+    })
+
+    // Update organization plan if payment successful
+    if (paymentResult.status === 'success') {
+      await prisma.organization.update({
+        where: { id: validatedData.organizationId },
+        data: {
+          plan: 'PREMIUM',
+          maxPlayers: 999999,
+        },
+      })
+    }
+
+    if (paymentResult.status !== 'success') {
+      return NextResponse.json(
+        { error: 'Payment failed', details: paymentResult },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json({
+      payment,
+      iyzicoResult: paymentResult,
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    // Handle iyzico payment errors
+    if (error && typeof error === 'object' && 'errorMessage' in error) {
+      // Create failed payment record
+      if (payload && validatedData) {
+        try {
+          await prisma.payment.create({
+            data: {
+              userId: payload.userId,
+              organizationId: validatedData.organizationId,
+              plan: validatedData.plan,
+              amount: validatedData.price,
+              status: 'FAILED',
+              iyzicoResponse: error,
+            },
+          })
+        } catch (dbError) {
+          console.error('Error creating failed payment record:', dbError)
+        }
+      }
+
+      return NextResponse.json(
+        { error: 'Payment failed', details: error },
         { status: 400 }
       )
     }

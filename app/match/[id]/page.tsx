@@ -252,7 +252,35 @@ export default function MatchPage() {
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Kadro</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Kadro</CardTitle>
+              {isOwner && match.status !== 'FINISHED' && !isInRoster && (
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/matches/${params.id}/roster`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user?.id }),
+                      })
+                      if (res.ok) {
+                        fetchMatch()
+                        alert('Kadroya eklendiniz')
+                      } else {
+                        const data = await res.json()
+                        alert(data.error || 'Hata oluştu')
+                      }
+                    } catch (error) {
+                      alert('Bir hata oluştu')
+                    }
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  Kendimi Ekle
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -260,15 +288,75 @@ export default function MatchPage() {
                 <p className="text-gray-600">Henüz kadro oluşturulmamış</p>
               ) : (
                 match.roster.map((player) => (
-                  <div key={player.id} className="p-2 border rounded">
-                    <p className="font-semibold">{player.user.name}</p>
-                    {player.position && (
-                      <p className="text-sm text-gray-600">Pozisyon: {player.position}</p>
+                  <div key={player.id} className="p-2 border rounded flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">{player.user.name}</p>
+                      {player.position && (
+                        <p className="text-sm text-gray-600">Pozisyon: {player.position}</p>
+                      )}
+                    </div>
+                    {isOwner && match.status !== 'FINISHED' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('Bu oyuncuyu kadrodan çıkarmak istediğinize emin misiniz?')) {
+                            return
+                          }
+                          try {
+                            const res = await fetch(`/api/matches/${params.id}/roster?userId=${player.userId}`, {
+                              method: 'DELETE',
+                            })
+                            if (res.ok) {
+                              fetchMatch()
+                            } else {
+                              const data = await res.json()
+                              alert(data.error || 'Hata oluştu')
+                            }
+                          } catch (error) {
+                            alert('Bir hata oluştu')
+                          }
+                        }}
+                      >
+                        Çıkar
+                      </Button>
                     )}
                   </div>
                 ))
               )}
             </div>
+            {isOwner && match.status !== 'FINISHED' && (
+              <div className="mt-4">
+                <Button
+                  onClick={async () => {
+                    const memberId = prompt('Eklemek istediğiniz oyuncunun ID\'sini girin (veya email ile arayın):')
+                    if (!memberId) return
+                    
+                    // Try to find user by email or use as ID
+                    try {
+                      const res = await fetch(`/api/matches/${params.id}/roster`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: memberId }),
+                      })
+                      if (res.ok) {
+                        fetchMatch()
+                        alert('Oyuncu kadroya eklendi')
+                      } else {
+                        const data = await res.json()
+                        alert(data.error || 'Hata oluştu')
+                      }
+                    } catch (error) {
+                      alert('Bir hata oluştu')
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Oyuncu Ekle
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

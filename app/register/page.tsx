@@ -48,7 +48,10 @@ export default function RegisterPage() {
         return
       }
 
-      router.push('/dashboard')
+      // Wait a bit for cookie to be set, then redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 100)
     } catch (err) {
       setError('Bir hata oluştu')
       setLoading(false)
