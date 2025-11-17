@@ -55,6 +55,9 @@ export default function Navbar() {
             </h1>
           </Link>
           <nav className="hidden md:flex items-center gap-4">
+            <Link href="/players" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
+              Oyuncular
+            </Link>
             <Link href="/plans" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
               Planlar
             </Link>
