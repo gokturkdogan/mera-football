@@ -38,12 +38,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check JWT_SECRET
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key') {
+      console.error('JWT_SECRET is not properly configured')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
     // Generate token
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     })
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Failed to generate token' },
+        { status: 500 }
+      )
+    }
 
     // Set cookie
     const response = NextResponse.json({
@@ -53,8 +69,10 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role,
       },
-    })
+      success: true,
+    }, { status: 200 })
 
+    // Set cookie with proper options
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

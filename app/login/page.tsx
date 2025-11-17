@@ -24,6 +24,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
@@ -35,10 +36,9 @@ export default function LoginPage() {
         return
       }
 
-      // Wait a bit for cookie to be set, then redirect
-      setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 100)
+      // Success - redirect to home page
+      // Use window.location for full page reload to ensure cookie is read
+      window.location.href = '/'
     } catch (err) {
       setError('Bir hata oluştu')
       setLoading(false)

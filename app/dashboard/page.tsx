@@ -36,7 +36,9 @@ export default function DashboardPage() {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/auth/me')
+      const res = await fetch('/api/auth/me', {
+        credentials: 'include',
+      })
       if (!res.ok) {
         router.push('/login')
         return
@@ -50,7 +52,9 @@ export default function DashboardPage() {
 
   const fetchOrganizations = async () => {
     try {
-      const res = await fetch('/api/organizations')
+      const res = await fetch('/api/organizations', {
+        credentials: 'include',
+      })
       if (res.ok) {
         const data = await res.json()
         setOrganizations(data.organizations || [])

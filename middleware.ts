@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyToken } from './lib/auth'
 
+// Edge Runtime doesn't support Node.js crypto module used by jsonwebtoken
+// So we only check for token existence, actual verification happens in API routes
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value
   const { pathname } = request.nextUrl
@@ -20,14 +21,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Verify token
-  const payload = verifyToken(token)
-  if (!payload) {
-    const response = NextResponse.redirect(new URL('/login', request.url))
-    response.cookies.delete('token')
-    return response
-  }
-
+  // Token exists, allow request (actual verification happens in API routes)
   return NextResponse.next()
 }
 

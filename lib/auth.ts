@@ -15,8 +15,14 @@ export function generateToken(payload: TokenPayload): string {
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload
-  } catch {
+    if (!JWT_SECRET || JWT_SECRET === 'your-secret-key') {
+      console.error('JWT_SECRET is not set or using default value')
+      return null
+    }
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return decoded
+  } catch (error: any) {
+    console.error('Token verification failed:', error.message)
     return null
   }
 }

@@ -37,6 +37,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       })
 
@@ -50,7 +51,7 @@ export default function RegisterPage() {
 
       // Wait a bit for cookie to be set, then redirect
       setTimeout(() => {
-        window.location.href = '/dashboard'
+        window.location.href = '/'
       }, 100)
     } catch (err) {
       setError('Bir hata oluştu')
