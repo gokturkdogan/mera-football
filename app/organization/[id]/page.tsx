@@ -517,10 +517,8 @@ export default function OrganizationPage() {
                       <span className="text-2xl">🏟️</span>
                     </div>
                     <div className="space-y-2">
-                      <a
-                        href={facility.location}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <Link
+                        href={`/facilities/${facility.id}`}
                         className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -528,8 +526,8 @@ export default function OrganizationPage() {
                           <polyline points="15 3 21 3 21 9"></polyline>
                           <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
-                        Konumu Görüntüle
-                      </a>
+                        Detayı Gör
+                      </Link>
                       <p className="text-xs text-gray-500">
                         📅 {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
                           year: 'numeric',
