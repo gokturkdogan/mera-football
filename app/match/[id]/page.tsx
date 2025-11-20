@@ -84,29 +84,13 @@ export default function MatchPage() {
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [draggedPlayer, setDraggedPlayer] = useState<string | null>(null)
   
-  // Formation positions: 1 GK, 3 DF, 2 MF, 1 FW per team
+  // Free formation: players can be placed anywhere on the field
   const [formation, setFormation] = useState<{
-    teamA: {
-      gk: string | null
-      df1: string | null
-      df2: string | null
-      df3: string | null
-      mf1: string | null
-      mf2: string | null
-      fw1: string | null
-    }
-    teamB: {
-      gk: string | null
-      df1: string | null
-      df2: string | null
-      df3: string | null
-      mf1: string | null
-      mf2: string | null
-      fw1: string | null
-    }
+    teamA: Array<{ userId: string; x: number; y: number }>
+    teamB: Array<{ userId: string; x: number; y: number }>
   }>({
-    teamA: { gk: null, df1: null, df2: null, df3: null, mf1: null, mf2: null, fw1: null },
-    teamB: { gk: null, df1: null, df2: null, df3: null, mf1: null, mf2: null, fw1: null },
+    teamA: [],
+    teamB: [],
   })
 
   useEffect(() => {
@@ -183,18 +167,58 @@ export default function MatchPage() {
     if (!match || !match.roster) return
     
     const newFormation = {
-      teamA: { gk: null, df1: null, df2: null, df3: null, mf1: null, mf2: null, fw1: null },
-      teamB: { gk: null, df1: null, df2: null, df3: null, mf1: null, mf2: null, fw1: null },
+      teamA: [] as Array<{ userId: string; x: number; y: number }>,
+      teamB: [] as Array<{ userId: string; x: number; y: number }>,
     }
     
     // Load existing positions from roster
     match.roster.forEach((player) => {
       if (player.position) {
-        const [team, pos] = player.position.split('_')
-        if (team === 'A' && pos in newFormation.teamA) {
-          ;(newFormation.teamA as any)[pos] = player.userId
-        } else if (team === 'B' && pos in newFormation.teamB) {
-          ;(newFormation.teamB as any)[pos] = player.userId
+        const parts = player.position.split('_')
+        const team = parts[0]
+        
+        // Try to parse x, y coordinates (new format: "A_x_y")
+        if (parts.length === 3) {
+          const x = parseFloat(parts[1])
+          const y = parseFloat(parts[2])
+          if (!isNaN(x) && !isNaN(y)) {
+            if (team === 'A') {
+              newFormation.teamA.push({ userId: player.userId, x, y })
+            } else if (team === 'B') {
+              newFormation.teamB.push({ userId: player.userId, x, y })
+            }
+            return
+          }
+        }
+        
+        // Fallback: old format with position names (for backward compatibility)
+        const pos = parts[1]
+        if (team === 'A') {
+          // Default positions for Team A (bottom half)
+          const defaultPositions: { [key: string]: { x: number; y: number } } = {
+            gk: { x: 50, y: 10 },
+            df1: { x: 25, y: 25 },
+            df2: { x: 50, y: 25 },
+            df3: { x: 75, y: 25 },
+            mf1: { x: 35, y: 40 },
+            mf2: { x: 65, y: 40 },
+            fw1: { x: 50, y: 60 },
+          }
+          const position = defaultPositions[pos] || { x: 50, y: 30 }
+          newFormation.teamA.push({ userId: player.userId, x: position.x, y: position.y })
+        } else if (team === 'B') {
+          // Default positions for Team B (top half)
+          const defaultPositions: { [key: string]: { x: number; y: number } } = {
+            gk: { x: 50, y: 90 },
+            df1: { x: 25, y: 75 },
+            df2: { x: 50, y: 75 },
+            df3: { x: 75, y: 75 },
+            mf1: { x: 35, y: 60 },
+            mf2: { x: 65, y: 60 },
+            fw1: { x: 50, y: 40 },
+          }
+          const position = defaultPositions[pos] || { x: 50, y: 70 }
+          newFormation.teamB.push({ userId: player.userId, x: position.x, y: position.y })
         }
       }
     })
@@ -214,32 +238,70 @@ export default function MatchPage() {
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleDrop = async (team: 'A' | 'B', position: string, e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     if (!match || !draggedPlayer || match.status === 'FINISHED' || match.status === 'PUBLISHED' || !isOwner) return
-    await handlePositionSelect(team, position, draggedPlayer)
+    
+    const fieldElement = e.currentTarget
+    const rect = fieldElement.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    
+    // Determine team based on y position: top half = Team B, bottom half = Team A
+    const team: 'A' | 'B' = y < 50 ? 'B' : 'A'
+    
+    await handlePositionSelect(team, x, y, draggedPlayer)
     setDraggedPlayer(null)
   }
 
-  const handlePositionSelect = async (team: 'A' | 'B', position: string, userId: string | null) => {
+  const handlePositionSelect = async (team: 'A' | 'B', x: number, y: number, userId: string | null) => {
     if (!match || !user) return
     const isOwnerCheck = user.id === match.organization.ownerId
     if (!isOwnerCheck) return
     
-    const positionKey = `${team}_${position}` as any
-    
     // Update formation state
-    setFormation((prev) => ({
-      ...prev,
-      [team === 'A' ? 'teamA' : 'teamB']: {
-        ...prev[team === 'A' ? 'teamA' : 'teamB'],
-        [position]: userId,
-      },
-    }))
+    setFormation((prev) => {
+      const newFormation = { ...prev }
+      
+      // Remove player from both teams if exists
+      newFormation.teamA = newFormation.teamA.filter(p => p.userId !== userId)
+      newFormation.teamB = newFormation.teamB.filter(p => p.userId !== userId)
+      
+      // Add player to the correct team
+      if (userId) {
+        newFormation[team === 'A' ? 'teamA' : 'teamB'].push({ userId, x, y })
+      }
+      
+      return newFormation
+    })
     
     if (!userId) return // If clearing position, don't add to roster
     
+    // Check if player is already in roster
+    const isAlreadyInRoster = match.roster.some(p => p.userId === userId)
+    
+    // Save position as "team_x_y" format
+    const positionKey = `${team}_${x.toFixed(1)}_${y.toFixed(1)}`
+    
     try {
+      // If player is already in roster, delete first then add with new position
+      if (isAlreadyInRoster) {
+        // Delete existing roster entry
+        const deleteRes = await fetch(`/api/matches/${params.id}/roster?userId=${userId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+        
+        if (!deleteRes.ok) {
+          const deleteData = await deleteRes.json()
+          alert(deleteData.error || 'Oyuncu pozisyonu güncellenirken hata oluştu')
+          loadFormationFromRoster()
+          return
+        }
+      }
+      
+      // Add player with new position
       const res = await fetch(`/api/matches/${params.id}/roster`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -269,32 +331,11 @@ export default function MatchPage() {
     const isOwnerCheck = user.id === match.organization.ownerId
     if (!isOwnerCheck || match.status === 'FINISHED' || match.status === 'PUBLISHED') return
 
-    // Find which position this player is in
-    let team: 'A' | 'B' | null = null
-    let position: string | null = null
-
-    for (const [pos, playerId] of Object.entries(formation.teamA)) {
-      if (playerId === userId) {
-        team = 'A'
-        position = pos
-        break
-      }
-    }
-
-    if (!team) {
-      for (const [pos, playerId] of Object.entries(formation.teamB)) {
-        if (playerId === userId) {
-          team = 'B'
-          position = pos
-          break
-        }
-      }
-    }
-
-    if (!team || !position) return
-
-    // Clear the position
-    await handlePositionSelect(team, position, null)
+    // Remove from formation state
+    setFormation((prev) => ({
+      teamA: prev.teamA.filter(p => p.userId !== userId),
+      teamB: prev.teamB.filter(p => p.userId !== userId),
+    }))
 
     // Remove from roster
     try {
@@ -498,316 +539,87 @@ export default function MatchPage() {
                 <div className="flex gap-3">
                   {/* Halısaha Krokisi - Responsive */}
                   <div className="w-[60%]">
-                    <div className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl border-4 border-green-600 shadow-2xl overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '500px', padding: '0.75rem', width: '100%' }}>
+                    <div 
+                      className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl border-4 border-green-600 shadow-2xl overflow-hidden" 
+                      style={{ aspectRatio: '16/9', minHeight: '500px', padding: '0.75rem', width: '100%' }}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                    >
                     {/* Saha Çizgileri */}
                     <div className="absolute inset-0 border-4 border-green-700 rounded-xl"></div>
                     <div className="absolute top-1/2 left-0 right-0 h-1 bg-green-700 opacity-80"></div>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 border-4 border-green-700 rounded-full"></div>
                     
-                    {/* Takım A (Alt Taraf) */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1/2" style={{ paddingBottom: '0.5rem' }}>
-                      {/* Kaleci */}
-                      <div 
-                        className="absolute bottom-1 sm:bottom-1 md:bottom-2 left-1/2 transform -translate-x-1/2 z-10"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop('A', 'gk', e)}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div 
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
-                              formation.teamA.gk 
-                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700 shadow-lg' 
-                                : 'bg-white border-blue-500 border-dashed'
-                            }`}
-                          >
-                            {formation.teamA.gk ? (
-                              <span className="text-white font-bold text-lg sm:text-xl">
-                                {organizationMembers.find(m => m.userId === formation.teamA.gk)?.user.name.charAt(0).toUpperCase() || '?'}
-                              </span>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                            )}
+                    {/* Oyuncular - Team A (Alt Yarı) */}
+                    {formation.teamA.map((player) => {
+                      const member = organizationMembers.find(m => m.userId === player.userId)
+                      if (!member) return null
+                      return (
+                        <div
+                          key={player.userId}
+                          draggable={isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'}
+                          onDragStart={(e) => handleDragStart(e, player.userId)}
+                          className={`absolute flex flex-col items-center z-10 ${
+                            isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' 
+                              ? 'cursor-grab active:cursor-grabbing' 
+                              : 'cursor-default'
+                          }`}
+                          style={{
+                            left: `${player.x}%`,
+                            bottom: `${100 - player.y}%`,
+                            transform: 'translate(-50%, 50%)',
+                          }}
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700 shadow-lg">
+                            <span className="text-white font-bold text-sm sm:text-base">
+                              {member.user.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          {formation.teamA.gk ? (
-                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-blue-700 shadow-md max-w-[80px] truncate">
-                              {organizationMembers.find(m => m.userId === formation.teamA.gk)?.user.name || ''}
-                            </div>
-                          ) : (
-                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-blue-700">GK</div>
-                          )}
+                          <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-blue-700 shadow-md max-w-[80px] truncate">
+                            {member.user.name}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Defanslar */}
-                      <div className="absolute bottom-[4.5rem] sm:bottom-[4.75rem] md:bottom-20 left-2 right-2 sm:left-4 sm:right-4 md:left-6 md:right-6 flex justify-between items-center z-10">
-                        {['df1', 'df2', 'df3'].map((pos, idx) => (
-                          <div 
-                            key={pos} 
-                            className="flex flex-col items-center"
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop('A', pos, e)}
-                          >
-                            <div 
-                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
-                                (formation.teamA as any)[pos]
-                                  ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-700 shadow-lg' 
-                                  : 'bg-white border-green-500 border-dashed'
-                              }`}
-                            >
-                              {(formation.teamA as any)[pos] ? (
-                                <span className="text-white font-bold text-sm sm:text-base">
-                                  {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
-                                </span>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                  <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                              )}
-                            </div>
-                            {(formation.teamA as any)[pos] ? (
-                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-green-700 shadow-md max-w-[80px] truncate">
-                                {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || ''}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-green-700">DF{idx + 1}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Ortasaha */}
-                      <div className="absolute bottom-24 sm:bottom-26 md:bottom-28 left-1/4 right-1/4 flex justify-between items-center z-10">
-                        {['mf1', 'mf2'].map((pos, idx) => (
-                          <div 
-                            key={pos} 
-                            className="flex flex-col items-center"
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop('A', pos, e)}
-                          >
-                            <div 
-                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
-                                (formation.teamA as any)[pos]
-                                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 border-yellow-700 shadow-lg' 
-                                  : 'bg-white border-yellow-500 border-dashed'
-                              }`}
-                            >
-                              {(formation.teamA as any)[pos] ? (
-                                <span className="text-white font-bold text-sm sm:text-base">
-                                  {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
-                                </span>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500">
-                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                  <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                              )}
-                            </div>
-                            {(formation.teamA as any)[pos] ? (
-                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-yellow-700 shadow-md max-w-[80px] truncate">
-                                {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || ''}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-yellow-700">MF{idx + 1}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Forvet */}
-                      <div 
-                        className="absolute bottom-56 sm:bottom-60 md:bottom-64 left-1/2 transform -translate-x-1/2 z-10"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop('A', 'fw1', e)}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div 
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
-                              formation.teamA.fw1 
-                                ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-700 shadow-lg' 
-                                : 'bg-white border-red-500 border-dashed'
-                            }`}
-                          >
-                            {formation.teamA.fw1 ? (
-                              <span className="text-white font-bold text-lg sm:text-xl">
-                                {organizationMembers.find(m => m.userId === formation.teamA.fw1)?.user.name.charAt(0).toUpperCase() || '?'}
-                              </span>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                            )}
-                          </div>
-                          {formation.teamA.fw1 ? (
-                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-red-700 shadow-md max-w-[80px] truncate">
-                              {organizationMembers.find(m => m.userId === formation.teamA.fw1)?.user.name || ''}
-                            </div>
-                          ) : (
-                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-red-700">FW</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })}
                     
-                    {/* Takım B (Üst Taraf) */}
-                    <div className="absolute top-0 left-0 right-0 h-1/2" style={{ paddingTop: '0.5rem' }}>
-                      {/* Kaleci */}
-                      <div 
-                        className="absolute top-1 sm:top-1 md:top-2 left-1/2 transform -translate-x-1/2 z-10"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop('B', 'gk', e)}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div 
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
-                              formation.teamB.gk 
-                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700 shadow-lg' 
-                                : 'bg-white border-blue-500 border-dashed'
-                            }`}
-                          >
-                            {formation.teamB.gk ? (
-                              <span className="text-white font-bold text-lg sm:text-xl">
-                                {organizationMembers.find(m => m.userId === formation.teamB.gk)?.user.name.charAt(0).toUpperCase() || '?'}
-                              </span>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                            )}
+                    {/* Oyuncular - Team B (Üst Yarı) */}
+                    {formation.teamB.map((player) => {
+                      const member = organizationMembers.find(m => m.userId === player.userId)
+                      if (!member) return null
+                      return (
+                        <div
+                          key={player.userId}
+                          draggable={isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'}
+                          onDragStart={(e) => handleDragStart(e, player.userId)}
+                          className={`absolute flex flex-col items-center z-10 ${
+                            isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' 
+                              ? 'cursor-grab active:cursor-grabbing' 
+                              : 'cursor-default'
+                          }`}
+                          style={{
+                            left: `${player.x}%`,
+                            top: `${player.y}%`,
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center bg-gradient-to-br from-red-500 to-red-600 border-red-700 shadow-lg">
+                            <span className="text-white font-bold text-sm sm:text-base">
+                              {member.user.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          {formation.teamB.gk ? (
-                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-blue-700 shadow-md max-w-[80px] truncate">
-                              {organizationMembers.find(m => m.userId === formation.teamB.gk)?.user.name || ''}
-                            </div>
-                          ) : (
-                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-blue-700">GK</div>
-                          )}
+                          <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-red-700 shadow-md max-w-[80px] truncate">
+                            {member.user.name}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Defanslar */}
-                      <div className="absolute top-[4.5rem] sm:top-[4.75rem] md:top-20 left-2 right-2 sm:left-4 sm:right-4 md:left-6 md:right-6 flex justify-between items-center z-10">
-                        {['df1', 'df2', 'df3'].map((pos, idx) => (
-                          <div 
-                            key={pos} 
-                            className="flex flex-col items-center"
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop('B', pos, e)}
-                          >
-                            <div 
-                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
-                                (formation.teamB as any)[pos]
-                                  ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-700 shadow-lg' 
-                                  : 'bg-white border-green-500 border-dashed'
-                              }`}
-                            >
-                              {(formation.teamB as any)[pos] ? (
-                                <span className="text-white font-bold text-sm sm:text-base">
-                                  {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
-                                </span>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                  <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                              )}
-                            </div>
-                            {(formation.teamB as any)[pos] ? (
-                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-green-700 shadow-md max-w-[80px] truncate">
-                                {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || ''}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-green-700">DF{idx + 1}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Ortasaha */}
-                      <div className="absolute top-24 sm:top-26 md:top-28 left-1/4 right-1/4 flex justify-between items-center z-10">
-                        {['mf1', 'mf2'].map((pos, idx) => (
-                          <div 
-                            key={pos} 
-                            className="flex flex-col items-center"
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop('B', pos, e)}
-                          >
-                            <div 
-                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
-                                (formation.teamB as any)[pos]
-                                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 border-yellow-700 shadow-lg' 
-                                  : 'bg-white border-yellow-500 border-dashed'
-                              }`}
-                            >
-                              {(formation.teamB as any)[pos] ? (
-                                <span className="text-white font-bold text-sm sm:text-base">
-                                  {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
-                                </span>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500">
-                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                  <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                              )}
-                            </div>
-                            {(formation.teamB as any)[pos] ? (
-                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-yellow-700 shadow-md max-w-[80px] truncate">
-                                {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || ''}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-yellow-700">MF{idx + 1}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Forvet */}
-                      <div 
-                        className="absolute top-56 sm:top-60 md:top-64 left-1/2 transform -translate-x-1/2 z-10"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop('B', 'fw1', e)}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div 
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
-                              formation.teamB.fw1 
-                                ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-700 shadow-lg' 
-                                : 'bg-white border-red-500 border-dashed'
-                            }`}
-                          >
-                            {formation.teamB.fw1 ? (
-                              <span className="text-white font-bold text-lg sm:text-xl">
-                                {organizationMembers.find(m => m.userId === formation.teamB.fw1)?.user.name.charAt(0).toUpperCase() || '?'}
-                              </span>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                            )}
-                          </div>
-                          {formation.teamB.fw1 ? (
-                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-red-700 shadow-md max-w-[80px] truncate">
-                              {organizationMembers.find(m => m.userId === formation.teamB.fw1)?.user.name || ''}
-                            </div>
-                          ) : (
-                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-red-700">FW</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })}
                     
                     {/* Takım Etiketleri */}
                     <div className="absolute bottom-0.5 left-2 sm:left-3 text-[9px] sm:text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded shadow-md z-20">Takım A</div>
                     <div className="absolute top-0.5 right-2 sm:right-3 text-[9px] sm:text-[10px] font-bold text-white bg-red-600 px-1.5 py-0.5 rounded shadow-md z-20">Takım B</div>
                     </div>
                   </div>
-                  
+
                   {/* Oyuncu Listesi - Kompakt */}
                   <div className="w-[40%]">
                     <Card className="shadow-xl border-2 border-purple-200 bg-white h-full">
@@ -829,8 +641,8 @@ export default function MatchPage() {
                             </div>
                           ) : (
                             organizationMembers.map((member) => {
-                              const isInFormation = Object.values(formation.teamA).includes(member.userId) || 
-                                                   Object.values(formation.teamB).includes(member.userId)
+                              const isInFormation = formation.teamA.some(p => p.userId === member.userId) || 
+                                                   formation.teamB.some(p => p.userId === member.userId)
                               return (
                                 <div
                                   key={member.userId}
