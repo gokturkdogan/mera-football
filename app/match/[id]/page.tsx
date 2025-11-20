@@ -92,6 +92,9 @@ export default function MatchPage() {
     name: string
     location: string
   } | null>(null)
+  const [attendanceStatus, setAttendanceStatus] = useState<'PENDING' | 'ACCEPTED' | 'DECLINED'>('PENDING')
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
+  const [isOrganizationMember, setIsOrganizationMember] = useState(false)
   
   // Free formation: players can be placed anywhere on the field
   const [formation, setFormation] = useState<{
@@ -108,12 +111,82 @@ export default function MatchPage() {
   }, [])
 
   useEffect(() => {
-    if (match) {
+    if (match && user) {
       fetchOrganizationMembers()
       loadFormationFromRoster()
       fetchFacilities()
+      fetchAttendanceStatus()
+      checkOrganizationMembership()
     }
-  }, [match])
+  }, [match, user])
+
+  const checkOrganizationMembership = async () => {
+    if (!match || !user) return
+    try {
+      const res = await fetch(`/api/organizations/${match.organization.id}/members`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const isMember = data.members.some((m: any) => m.userId === user.id && m.status === 'APPROVED')
+        setIsOrganizationMember(isMember)
+      }
+    } catch (error) {
+      console.error('Error checking membership:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (match?.venue && facilities.length > 0) {
+      const facility = facilities.find(f => f.name === match.venue)
+      if (facility) {
+        setSelectedFacility(facility)
+      } else {
+        setSelectedFacility(null)
+      }
+    } else {
+      setSelectedFacility(null)
+    }
+  }, [match?.venue, facilities])
+
+  const fetchAttendanceStatus = async () => {
+    if (!match || !user) return
+    try {
+      const res = await fetch(`/api/matches/${match.id}/attendance`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAttendanceStatus(data.attendance.status || 'PENDING')
+      }
+    } catch (error) {
+      console.error('Error fetching attendance status:', error)
+    }
+  }
+
+  const handleAttendanceUpdate = async (status: 'ACCEPTED' | 'DECLINED') => {
+    if (!match) return
+    setLoadingAttendance(true)
+    try {
+      const res = await fetch(`/api/matches/${match.id}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        setAttendanceStatus(status)
+        alert(status === 'ACCEPTED' ? 'Maça katılacağınızı belirttiniz!' : 'Maça katılmayacağınızı belirttiniz.')
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Hata oluştu')
+      }
+    } catch (error) {
+      alert('Bir hata oluştu')
+    } finally {
+      setLoadingAttendance(false)
+    }
+  }
 
   useEffect(() => {
     if (match?.venue && facilities.length > 0) {
@@ -167,17 +240,64 @@ export default function MatchPage() {
   }
 
   const fetchOrganizationMembers = async () => {
-    if (!match) return
+    if (!match || !user) return
     setLoadingMembers(true)
     try {
-      const res = await fetch(`/api/organizations/${match.organization.id}/members`, {
-        credentials: 'include',
-      })
-      if (res.ok) {
-        const data = await res.json()
-        // Filter only approved members
-        const approved = data.members.filter((m: any) => m.status === 'APPROVED')
-        setOrganizationMembers(approved)
+      const isOwnerCheck = user.id === match.organization.ownerId
+      // If user is owner and match is not finished, get only accepted players for roster management
+      if (isOwnerCheck && match.status !== 'FINISHED' && match.status !== 'PUBLISHED') {
+        const res = await fetch(`/api/matches/${match.id}/attendance/list`, {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          // Only show players who accepted (owner is always included)
+          const acceptedMembers = data.allMembers
+            .filter((m: any) => m.attendanceStatus === 'ACCEPTED' || m.userId === match.organization.ownerId)
+            .map((m: any) => ({
+              id: m.id,
+              userId: m.userId,
+              status: m.status,
+              user: m.user,
+            }))
+          
+          // Ensure owner is in the list
+          const ownerInList = acceptedMembers.some((m: any) => m.userId === match.organization.ownerId)
+          if (!ownerInList && data.acceptedPlayers) {
+            const owner = data.acceptedPlayers.find((p: any) => p.id === match.organization.ownerId)
+            if (owner) {
+              acceptedMembers.push({
+                id: `owner-${match.organization.ownerId}`,
+                userId: owner.id,
+                status: 'APPROVED',
+                user: owner,
+              })
+            }
+          }
+          
+          setOrganizationMembers(acceptedMembers)
+        } else {
+          // Fallback to regular members API
+          const res2 = await fetch(`/api/organizations/${match.organization.id}/members`, {
+            credentials: 'include',
+          })
+          if (res2.ok) {
+            const data = await res2.json()
+            const approved = data.members.filter((m: any) => m.status === 'APPROVED')
+            setOrganizationMembers(approved)
+          }
+        }
+      } else {
+        // For non-owners or finished matches, show all approved members
+        const res = await fetch(`/api/organizations/${match.organization.id}/members`, {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          // Filter only approved members
+          const approved = data.members.filter((m: any) => m.status === 'APPROVED')
+          setOrganizationMembers(approved)
+        }
       }
     } catch (error) {
       console.error('Error fetching organization members:', error)
@@ -607,11 +727,63 @@ export default function MatchPage() {
         </div>
       </section>
 
+      {/* Katılım Butonları - Sadece organizasyon üyesi oyuncular için */}
+      {match && user && !isOwner && isOrganizationMember && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' && (
+        <div className="container mx-auto px-4 pt-4">
+          <Card className="border-4 border-yellow-400 bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 shadow-2xl animate-pulse">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">
+                    {attendanceStatus === 'PENDING' ? '⚽ Maça Katılacak mısınız?' : 
+                     attendanceStatus === 'ACCEPTED' ? '✅ Maça katılacağınızı belirttiniz' : 
+                     '❌ Maça katılmayacağınızı belirttiniz'}
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    {attendanceStatus === 'PENDING' 
+                      ? 'Lütfen maça katılıp katılmayacağınızı belirtin. Katılacağınızı belirtirseniz yönetici sizi kadroya ekleyebilir.'
+                      : attendanceStatus === 'ACCEPTED'
+                      ? 'Yönetici sizi kadroya ekleyebilir. Durumu değiştirmek isterseniz aşağıdaki butonları kullanabilirsiniz.'
+                      : 'Maça katılmayacağınızı belirttiniz. Fikriniz değişirse aşağıdaki butonları kullanabilirsiniz.'}
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => handleAttendanceUpdate('ACCEPTED')}
+                    disabled={loadingAttendance || attendanceStatus === 'ACCEPTED'}
+                    className={`px-6 py-3 text-lg font-bold shadow-lg ${
+                      attendanceStatus === 'ACCEPTED'
+                        ? 'bg-green-600 text-white cursor-default'
+                        : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                    }`}
+                    size="lg"
+                  >
+                    {loadingAttendance ? '...' : attendanceStatus === 'ACCEPTED' ? '✅ Katılacağım' : '✓ Katılacağım'}
+                  </Button>
+                  <Button
+                    onClick={() => handleAttendanceUpdate('DECLINED')}
+                    disabled={loadingAttendance || attendanceStatus === 'DECLINED'}
+                    variant="destructive"
+                    className={`px-6 py-3 text-lg font-bold shadow-lg ${
+                      attendanceStatus === 'DECLINED' ? 'opacity-75 cursor-default' : ''
+                    }`}
+                    size="lg"
+                  >
+                    {loadingAttendance ? '...' : attendanceStatus === 'DECLINED' ? '❌ Katılmayacağım' : '✕ Katılmayacağım'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Üst Kısım: Saha Krokisi + Oyuncu Listesi ve Maç Bilgileri */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Sol Kolon: Saha Krokisi ve Oyuncu Listesi */}
-          {(isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED') && (
+          {/* Yönetici için: Düzenlenebilir, Oyuncular için: Sadece görüntüleme */}
+          {(isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED' || isOrganizationMember) && (
             <Card className="shadow-xl border-2 border-emerald-300 bg-gradient-to-br from-white to-emerald-50 h-full">
               <CardHeader className="bg-gradient-to-r from-emerald-100 to-teal-100 border-b-2 border-emerald-300">
                 <CardTitle className="flex items-center gap-2">
@@ -620,8 +792,10 @@ export default function MatchPage() {
                 </CardTitle>
                 <CardDescription>
                   {match.status === 'FINISHED' || match.status === 'PUBLISHED' 
-                    ? 'Maç dizilişi (3-2-1 Dizilişi)'
-                    : 'Oyuncuları pozisyonlarına göre yerleştirin (3-2-1 Dizilişi)'}
+                    ? 'Maç dizilişi'
+                    : isOwner
+                    ? 'Oyuncuları pozisyonlarına göre yerleştirin'
+                    : 'Maç dizilişi önizlemesi'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
@@ -631,8 +805,8 @@ export default function MatchPage() {
                     <div 
                       className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl border-4 border-green-600 shadow-2xl overflow-hidden" 
                       style={{ aspectRatio: '16/9', minHeight: '500px', padding: '0.75rem', width: '100%' }}
-                      onDragOver={handleDragOver}
-                      onDrop={handleDrop}
+                      onDragOver={isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' ? handleDragOver : undefined}
+                      onDrop={isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' ? handleDrop : undefined}
                     >
                     {/* Saha Çizgileri */}
                     <div className="absolute inset-0 border-4 border-green-700 rounded-xl"></div>
@@ -715,10 +889,12 @@ export default function MatchPage() {
                       <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 border-b-2 border-purple-300 p-1.5">
                         <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
                           <span className="text-sm">👥</span>
-                          Oyuncular
+                          Maçı Kabul Eden Oyuncular
                         </CardTitle>
                         <CardDescription className="text-[9px] mt-0.5">
-                          Sürükleyip bırakın
+                          {isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' 
+                            ? 'Sürükleyip bırakın' 
+                            : 'Kadro listesi'}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="p-1.5">
@@ -968,19 +1144,6 @@ export default function MatchPage() {
                             className="w-full h-full"
                           ></iframe>
                         </div>
-                        <a
-                          href={selectedFacility.location}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                          </svg>
-                          Haritada Aç
-                        </a>
                       </div>
                     )}
                   </div>
@@ -993,8 +1156,48 @@ export default function MatchPage() {
 
         {/* Alt Kısım: Skor Girişi ve Kadro Listesi */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Skor Girişi */}
-          {isOwner && match.status !== 'FINISHED' && (
+          {/* Skor Girişi - Yönetici için düzenlenebilir, oyuncular için sadece görüntüleme */}
+          {match.scores ? (
+            <Card className="shadow-xl border-2 border-blue-200 bg-white">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">⚽</span>
+                  Maç Skoru
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-xl border-2 border-blue-200 text-center">
+                    <Label className="font-semibold text-lg">Takım A</Label>
+                    <p className="text-5xl font-black text-blue-700 mt-2">
+                      {match.scores?.teamAScore ?? 0}
+                    </p>
+                  </div>
+                  <div className="space-y-2 bg-gradient-to-br from-red-50 to-pink-50 p-6 rounded-xl border-2 border-red-200 text-center">
+                    <Label className="font-semibold text-lg">Takım B</Label>
+                    <p className="text-5xl font-black text-red-700 mt-2">
+                      {match.scores?.teamBScore ?? 0}
+                    </p>
+                  </div>
+                </div>
+                {isOwner && match.status !== 'FINISHED' && match.scores && (
+                  <Button 
+                    onClick={() => {
+                      setScoreData({
+                        teamAScore: match.scores!.teamAScore,
+                        teamBScore: match.scores!.teamBScore,
+                      })
+                      setShowScoreForm(true)
+                    }} 
+                    className="w-full mt-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    size="lg"
+                  >
+                    Skoru Düzenle
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : isOwner && match.status !== 'FINISHED' ? (
             <Card className="shadow-xl border-2 border-blue-200 bg-white">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
                 <CardTitle className="flex items-center gap-2">
@@ -1049,7 +1252,7 @@ export default function MatchPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
           {/* Kadro Listesi */}
           <Card className="shadow-xl border-2 border-purple-200 bg-white">
