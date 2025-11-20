@@ -83,6 +83,15 @@ export default function MatchPage() {
   }>>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [draggedPlayer, setDraggedPlayer] = useState<string | null>(null)
+  const [facilities, setFacilities] = useState<Array<{
+    id: string
+    name: string
+    location: string
+  }>>([])
+  const [selectedFacility, setSelectedFacility] = useState<{
+    name: string
+    location: string
+  } | null>(null)
   
   // Free formation: players can be placed anywhere on the field
   const [formation, setFormation] = useState<{
@@ -102,8 +111,22 @@ export default function MatchPage() {
     if (match) {
       fetchOrganizationMembers()
       loadFormationFromRoster()
+      fetchFacilities()
     }
   }, [match])
+
+  useEffect(() => {
+    if (match?.venue && facilities.length > 0) {
+      const facility = facilities.find(f => f.name === match.venue)
+      if (facility) {
+        setSelectedFacility(facility)
+      } else {
+        setSelectedFacility(null)
+      }
+    } else {
+      setSelectedFacility(null)
+    }
+  }, [match?.venue, facilities])
 
   const fetchUser = async () => {
     try {
@@ -160,6 +183,72 @@ export default function MatchPage() {
       console.error('Error fetching organization members:', error)
     } finally {
       setLoadingMembers(false)
+    }
+  }
+
+  const fetchFacilities = async () => {
+    if (!match) return
+    try {
+      const res = await fetch(`/api/organizations/${match.organization.id}/facilities`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFacilities(data.facilities || [])
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error)
+    }
+  }
+
+  // Extract map embed URL from iframe HTML or use directly if it's already a URL
+  const getMapEmbedUrl = (locationData: string): string => {
+    // If it's a full iframe HTML, extract the src URL
+    if (locationData.includes('<iframe')) {
+      const srcMatch = locationData.match(/src=["']([^"']+)["']/i)
+      if (srcMatch && srcMatch[1]) {
+        return srcMatch[1]
+      }
+    }
+    
+    // If it's already a Google Maps embed URL (contains pb= parameter), use it directly
+    if (locationData.includes('google.com/maps/embed') && locationData.includes('pb=')) {
+      return locationData
+    }
+    
+    // If it's a plain URL, try to convert to embed format
+    try {
+      if (locationData.includes('google.com/maps')) {
+        const url = new URL(locationData)
+        
+        // Check if ftid (feature ID) exists
+        if (url.searchParams.has('ftid')) {
+          const ftid = url.searchParams.get('ftid')
+          return `https://www.google.com/maps?ftid=${ftid}&output=embed&hl=tr`
+        }
+        
+        // If q parameter exists
+        if (url.searchParams.has('q')) {
+          const query = url.searchParams.get('q')
+          if (query) {
+            if (/^-?\d+\.?\d*,-?\d+\.?\d*$/.test(query)) {
+              const [lat, lng] = query.split(',')
+              return `https://www.google.com/maps?q=${lat},${lng}&output=embed&hl=tr&z=15`
+            }
+            return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed&hl=tr&z=15`
+          }
+        }
+        
+        // Add output=embed to existing URL
+        const separator = locationData.includes('?') ? '&' : '?'
+        return `${locationData}${separator}output=embed`
+      }
+      
+      // Return as is if we can't parse it
+      return locationData
+    } catch (error) {
+      // If parsing fails, return the original data
+      return locationData
     }
   }
 
@@ -523,8 +612,8 @@ export default function MatchPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Sol Kolon: Saha Krokisi ve Oyuncu Listesi */}
           {(isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED') && (
-            <Card className="h-full">
-              <CardHeader>
+            <Card className="shadow-xl border-2 border-emerald-300 bg-gradient-to-br from-white to-emerald-50 h-full">
+              <CardHeader className="bg-gradient-to-r from-emerald-100 to-teal-100 border-b-2 border-emerald-300">
                 <CardTitle className="flex items-center gap-2">
                   <span>⚽</span>
                   Diziliş Ön İzlemesi
@@ -622,8 +711,8 @@ export default function MatchPage() {
 
                   {/* Oyuncu Listesi - Kompakt */}
                   <div className="w-[40%]">
-                    <Card className="shadow-xl border-2 border-purple-200 bg-white h-full">
-                      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b p-1.5">
+                    <Card className="shadow-xl border-2 border-purple-300 bg-gradient-to-br from-white to-purple-50 h-full">
+                      <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 border-b-2 border-purple-300 p-1.5">
                         <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
                           <span className="text-sm">👥</span>
                           Oyuncular
@@ -647,12 +736,16 @@ export default function MatchPage() {
                                 <div
                                   key={member.userId}
                                   draggable={!isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'}
-                                  onDragStart={(e) => handleDragStart(e, member.userId)}
+                                  onDragStart={(e) => {
+                                    if (!isInFormation) {
+                                      handleDragStart(e, member.userId)
+                                    }
+                                  }}
                                   className={`p-1 border rounded-md flex items-center gap-1.5 transition-all ${
                                     isInFormation 
-                                      ? 'bg-gray-100 border-gray-300 opacity-60 cursor-not-allowed' 
-                                      : 'bg-white border-gray-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 hover:shadow-sm cursor-grab active:cursor-grabbing'
-                                  } ${!isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED' ? 'cursor-default' : ''}`}
+                                      ? 'bg-gray-100 border-gray-300 opacity-60' 
+                                      : 'bg-white border-gray-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 hover:shadow-sm'
+                                  } ${!isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED' ? '' : isInFormation ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
                                 >
                                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm flex-shrink-0 ${
                                     isInFormation 
@@ -662,14 +755,38 @@ export default function MatchPage() {
                                     {member.user.name.charAt(0).toUpperCase()}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className={`font-semibold text-xs truncate ${isInFormation ? 'text-gray-500' : 'text-gray-900'}`}>
-                                      {member.user.name}
-                                    </p>
-                                    {isInFormation && (
-                                      <p className="text-[9px] text-gray-500 font-medium">
-                                        Dizilişte
+                                    <Link 
+                                      href={`/players/${member.userId}`}
+                                      onClick={(e) => {
+                                        // If draggable, prevent default and check if it's a click or drag
+                                        if (!isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED') {
+                                          // Check if mouse moved (drag) or stayed (click)
+                                          const startX = e.clientX
+                                          const startY = e.clientY
+                                          
+                                          const handleMouseUp = (upEvent: MouseEvent) => {
+                                            const moved = Math.abs(upEvent.clientX - startX) > 5 || Math.abs(upEvent.clientY - startY) > 5
+                                            if (!moved && !draggedPlayer) {
+                                              router.push(`/players/${member.userId}`)
+                                            }
+                                            document.removeEventListener('mouseup', handleMouseUp)
+                                          }
+                                          
+                                          document.addEventListener('mouseup', handleMouseUp)
+                                          e.preventDefault()
+                                        }
+                                      }}
+                                      className="block"
+                                    >
+                                      <p className={`font-semibold text-xs truncate ${isInFormation ? 'text-gray-500' : 'text-gray-900'} hover:text-purple-600 transition-colors cursor-pointer`}>
+                                        {member.user.name}
                                       </p>
-                                    )}
+                                      {isInFormation && (
+                                        <p className="text-[9px] text-gray-500 font-medium">
+                                          Dizilişte
+                                        </p>
+                                      )}
+                                    </Link>
                                   </div>
                                   {isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' && (
                                     <button
@@ -828,9 +945,45 @@ export default function MatchPage() {
                     </Button>
                   </div>
                 ) : (
-                  <p className={`text-sm font-bold ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
-                    {match.venue || 'Saha adı belirtilmemiş'}
-                  </p>
+                  <div>
+                    <p className={`text-sm font-bold mb-2 ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+                      {match.venue || 'Saha adı belirtilmemiş'}
+                    </p>
+                    {selectedFacility && (
+                      <div className="mt-3">
+                        <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-2 mb-2">
+                          <p className="text-xs font-semibold text-yellow-900 text-center">
+                            🏟️ {selectedFacility.name}
+                          </p>
+                        </div>
+                        <div className="w-full h-64 rounded-lg overflow-hidden border-2 border-gray-300 bg-gray-100">
+                          <iframe
+                            src={getMapEmbedUrl(selectedFacility.location)}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            className="w-full h-full"
+                          ></iframe>
+                        </div>
+                        <a
+                          href={selectedFacility.location}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                          </svg>
+                          Haritada Aç
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

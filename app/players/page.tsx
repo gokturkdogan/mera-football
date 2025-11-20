@@ -190,16 +190,17 @@ export default function PlayersPage() {
                     {filteredPlayers.map((player, index) => (
                       <tr
                         key={player.id}
-                        className={`border-b hover:bg-green-50 transition-colors ${
+                        className={`border-b hover:bg-green-50 transition-colors cursor-pointer ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                         }`}
+                        onClick={() => router.push(`/players/${player.id}`)}
                       >
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">
                               {player.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-semibold text-gray-900">{player.name}</span>
+                            <span className="font-semibold text-gray-900 hover:text-green-600 transition-colors">{player.name}</span>
                           </div>
                         </td>
                         <td className="p-4">

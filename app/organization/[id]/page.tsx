@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import Navbar from '@/components/Navbar'
 
 interface Organization {
@@ -47,10 +49,19 @@ export default function OrganizationPage() {
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [facilities, setFacilities] = useState<any[]>([])
+  const [showFacilityForm, setShowFacilityForm] = useState(false)
+  const [facilityForm, setFacilityForm] = useState({
+    name: '',
+    location: '',
+  })
+  const [facilityLoading, setFacilityLoading] = useState(false)
+  const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUser()
     fetchOrganization()
+    fetchFacilities()
   }, [])
 
   const fetchUser = async () => {
@@ -169,6 +180,46 @@ export default function OrganizationPage() {
     }
   }
 
+  const fetchFacilities = async () => {
+    try {
+      const res = await fetch(`/api/organizations/${params.id}/facilities`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFacilities(data.facilities || [])
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error)
+    }
+  }
+
+  const handleAddFacility = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFacilityLoading(true)
+    try {
+      const res = await fetch(`/api/organizations/${params.id}/facilities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(facilityForm),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert('Tesis başarıyla eklendi!')
+        setFacilityForm({ name: '', location: '' })
+        setShowFacilityForm(false)
+        fetchFacilities()
+      } else {
+        alert(data.error || 'Hata oluştu')
+      }
+    } catch (error) {
+      alert('Bir hata oluştu')
+    } finally {
+      setFacilityLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
@@ -250,7 +301,7 @@ export default function OrganizationPage() {
             </Button>
           )}
           {isOwner && (
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <Link href="/payment">
                 <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-lg">
                   {organization.owner.plan === 'FREE' ? '💎 Premium Plana Geç' : '⭐ Premium Aktif'}
@@ -261,9 +312,238 @@ export default function OrganizationPage() {
                   + Yeni Maç Oluştur
                 </Button>
               </Link>
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 shadow-lg"
+                onClick={() => setShowFacilityForm(!showFacilityForm)}
+              >
+                {showFacilityForm ? '✕ İptal' : '+ Tesis Ekle'}
+              </Button>
             </div>
           )}
         </div>
+
+        {/* Tesis Ekleme Formu */}
+        {isOwner && showFacilityForm && (
+          <Card className="mb-6 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>🏟️</span>
+                Yeni Tesis Ekle
+              </CardTitle>
+              <CardDescription>
+                Organizasyonunuz için yeni bir futbol tesisi ekleyin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddFacility} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="facilityName" className="text-base font-semibold">
+                    Tesis Adı <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="facilityName"
+                    type="text"
+                    placeholder="Örn: Merkez Futbol Sahası"
+                    value={facilityForm.name}
+                    onChange={(e) => setFacilityForm({ ...facilityForm, name: e.target.value })}
+                    required
+                    className="text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facilityLocation" className="text-base font-semibold">
+                    Konum (Google Maps Embed HTML) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="facilityLocation"
+                    type="text"
+                    placeholder='<iframe src="https://www.google.com/maps/embed?pb'
+                    value={facilityForm.location}
+                    onChange={(e) => setFacilityForm({ ...facilityForm, location: e.target.value })}
+                    required
+                    className="text-base"
+                  />
+                  
+                  {/* Görsel Talimatlar */}
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    {/* İlk Adım */}
+                    <div className="space-y-2">
+                      <div 
+                        className="relative cursor-pointer group"
+                        onClick={() => setExpandedImage('step1')}
+                      >
+                        <div className="w-full h-32 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-all group-hover:scale-105 flex items-center justify-center relative overflow-hidden">
+                          <img 
+                            src="/images/google-maps-share-step1.png" 
+                            alt="Google Maps Paylaş Adımı"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                          <div className="text-center z-10">
+                            <div className="text-3xl mb-1">📱</div>
+                            <p className="text-xs font-semibold text-gray-700">Adım 1</p>
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 group-hover:opacity-100">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-700 font-medium text-center">
+                        1. Google Maps üzerinde tesis konumunu açın, <strong>"Paylaş"</strong> butonuna tıklayın
+                      </p>
+                    </div>
+                    
+                    {/* İkinci Adım */}
+                    <div className="space-y-2">
+                      <div 
+                        className="relative cursor-pointer group"
+                        onClick={() => setExpandedImage('step2')}
+                      >
+                        <div className="w-full h-32 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg border-2 border-gray-300 hover:border-green-500 transition-all group-hover:scale-105 flex items-center justify-center relative overflow-hidden">
+                          <img 
+                            src="/images/google-maps-share-step2.png" 
+                            alt="Google Maps Embed Adımı"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                          <div className="text-center z-10">
+                            <div className="text-3xl mb-1">📋</div>
+                            <p className="text-xs font-semibold text-gray-700">Adım 2</p>
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 group-hover:opacity-100">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-700 font-medium text-center">
+                        2. Açılan modalda <strong>"Harita yerleştirme"</strong> seçeneğini seçip <strong>"HTML'Yİ KOPYALA"</strong> butonuna tıklayın ve kopyalanan değeri inputa yapıştırın
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tam Ekran Görsel Modal */}
+                {expandedImage && (
+                  <div 
+                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+                    onClick={() => setExpandedImage(null)}
+                  >
+                    <div className="relative max-w-4xl max-h-[90vh] w-full">
+                      <button
+                        onClick={() => setExpandedImage(null)}
+                        className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white rounded-full p-2 transition-all"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                      <div className="bg-white rounded-lg p-4">
+                        <img 
+                          src={expandedImage === 'step1' ? '/images/google-maps-share-step1.png' : '/images/google-maps-share-step2.png'}
+                          alt={expandedImage === 'step1' ? 'Google Maps Paylaş Adımı' : 'Google Maps Embed Adımı'}
+                          className="w-full h-auto rounded-lg border-2 border-gray-200"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            const errorDiv = document.createElement('div')
+                            errorDiv.className = 'w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center'
+                            errorDiv.innerHTML = '<div class="text-center"><div class="text-4xl mb-2">📷</div><p class="text-gray-600">Görsel yüklenemedi</p><p class="text-sm text-gray-500 mt-2">Görseli public/images/ klasörüne ekleyin</p></div>'
+                            e.currentTarget.parentElement?.appendChild(errorDiv)
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <Button 
+                    type="submit" 
+                    disabled={facilityLoading}
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                  >
+                    {facilityLoading ? 'Ekleniyor...' : '✓ Tesis Ekle'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setShowFacilityForm(false)
+                      setFacilityForm({ name: '', location: '' })
+                    }}
+                  >
+                    İptal
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tesisler Listesi */}
+        {facilities.length > 0 && (
+          <Card className="mb-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <span>🏟️</span>
+                Futbol Tesisleri ({facilities.length})
+              </CardTitle>
+              <CardDescription className="text-base">
+                Organizasyonunuzun kayıtlı futbol tesisleri
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {facilities.map((facility) => (
+                  <div
+                    key={facility.id}
+                    className="p-4 border-2 border-blue-200 rounded-lg bg-white hover:border-blue-400 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-bold text-lg text-gray-900">{facility.name}</h3>
+                      <span className="text-2xl">🏟️</span>
+                    </div>
+                    <div className="space-y-2">
+                      <a
+                        href={facility.location}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        Konumu Görüntüle
+                      </a>
+                      <p className="text-xs text-gray-500">
+                        📅 {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">

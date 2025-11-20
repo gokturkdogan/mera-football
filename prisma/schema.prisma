@@ -66,6 +66,7 @@ model Organization {
   owner           User              @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members         OrganizationMember[]
   matches         Match[]
+  facilities      Facility[]
 }
 
 model OrganizationMember {
@@ -170,5 +171,19 @@ model Payment {
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Facility {
+  id              String        @id @default(cuid())
+  name            String
+  location        String        // Google Maps share link
+  organizationId  String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 

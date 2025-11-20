@@ -24,15 +24,27 @@ export default function NewMatchPage() {
     capacity: 10,
   })
   const [organizations, setOrganizations] = useState<any[]>([])
+  const [facilities, setFacilities] = useState<any[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [timePickerOpen, setTimePickerOpen] = useState(false)
+  const [loadingFacilities, setLoadingFacilities] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
   }, [])
+
+  useEffect(() => {
+    if (formData.organizationId) {
+      fetchFacilities(formData.organizationId)
+    } else {
+      setFacilities([])
+      setFormData((prev) => ({ ...prev, venue: '' }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.organizationId])
 
   const fetchOrganizations = async () => {
     try {
@@ -48,6 +60,25 @@ export default function NewMatchPage() {
       }
     } catch (error) {
       console.error('Error fetching organizations:', error)
+    }
+  }
+
+  const fetchFacilities = async (organizationId?: string) => {
+    const orgId = organizationId || formData.organizationId
+    if (!orgId) return
+    setLoadingFacilities(true)
+    try {
+      const res = await fetch(`/api/organizations/${orgId}/facilities`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFacilities(data.facilities || [])
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error)
+    } finally {
+      setLoadingFacilities(false)
     }
   }
 
@@ -299,21 +330,59 @@ export default function NewMatchPage() {
                   )}
                 </div>
 
-                {/* Venue - Optional */}
+                {/* Venue - Optional - Select from Facilities */}
                 <div className="space-y-2">
                   <Label htmlFor="venue" className="text-base font-semibold">
-                    Saha Adı <span className="text-gray-400 text-sm">(Opsiyonel)</span>
+                    Tesis / Saha <span className="text-gray-400 text-sm">(Opsiyonel)</span>
                   </Label>
-                  <Input
-                    id="venue"
-                    type="text"
-                    placeholder="Örn: Halısaha Merkez, Futbol Sahası 1..."
-                    value={formData.venue}
-                    onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                    className="w-full px-4 py-3 text-lg border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                  />
+                  {loadingFacilities ? (
+                    <div className="w-full px-4 py-3 text-lg border-2 border-gray-200 rounded-lg bg-gray-50 flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-500">Tesisler yükleniyor...</span>
+                    </div>
+                  ) : facilities.length > 0 ? (
+                    <select
+                      id="venue"
+                      value={formData.venue}
+                      onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                      className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all bg-white"
+                    >
+                      <option value="">Tesis seçiniz veya boş bırakın...</option>
+                      {facilities.map((facility) => (
+                        <option key={facility.id} value={facility.name}>
+                          {facility.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : formData.organizationId ? (
+                    <div className="space-y-2">
+                      <Input
+                        id="venue"
+                        type="text"
+                        placeholder="Örn: Halısaha Merkez, Futbol Sahası 1..."
+                        value={formData.venue}
+                        onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                        className="w-full px-4 py-3 text-lg border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                      />
+                      <p className="text-xs text-blue-600 font-medium">
+                        💡 Bu organizasyonda henüz tesis eklenmemiş. Manuel olarak saha adı girebilir veya organizasyon sayfasından tesis ekleyebilirsiniz.
+                      </p>
+                    </div>
+                  ) : (
+                    <Input
+                      id="venue"
+                      type="text"
+                      placeholder="Önce bir organizasyon seçin..."
+                      value={formData.venue}
+                      onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                      className="w-full px-4 py-3 text-lg border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                      disabled
+                    />
+                  )}
                   <p className="text-xs text-gray-500">
-                    Saha adını şimdi ekleyebilir veya sonradan düzenleyebilirsiniz
+                    {facilities.length > 0 
+                      ? 'Organizasyonunuza eklenmiş tesislerden seçebilir veya manuel olarak saha adı girebilirsiniz'
+                      : 'Saha adını şimdi ekleyebilir veya sonradan düzenleyebilirsiniz'}
                   </p>
                 </div>
 
