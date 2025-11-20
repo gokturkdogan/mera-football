@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { format } from 'date-fns'
+import { tr } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import Navbar from '@/components/Navbar'
 
 export default function NewMatchPage() {
@@ -22,6 +26,9 @@ export default function NewMatchPage() {
   const [organizations, setOrganizations] = useState<any[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [timePickerOpen, setTimePickerOpen] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
@@ -94,8 +101,37 @@ export default function NewMatchPage() {
     }
   }
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0]
+  // Get today's date
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Handle date selection
+  useEffect(() => {
+    if (selectedDate) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd')
+      setFormData((prev) => ({ ...prev, date: dateStr }))
+    }
+  }, [selectedDate])
+
+  // Initialize selectedDate from formData.date
+  useEffect(() => {
+    if (formData.date && !selectedDate) {
+      const date = new Date(formData.date)
+      if (!isNaN(date.getTime())) {
+        setSelectedDate(date)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Generate time options (every 30 minutes from 00:00 to 23:30)
+  const timeOptions = []
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      timeOptions.push(timeStr)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -158,45 +194,47 @@ export default function NewMatchPage() {
                     <span className="text-2xl">📅</span>
                     Tarih <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-focus-within:text-green-600 transition-colors">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                      </svg>
-                    </div>
-                    <Input
-                      id="date"
-                      type="date"
-                      min={today}
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all font-medium"
-                      required
-                    />
-                    {formData.date && (
-                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <div className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-sm font-bold">
-                          {new Date(formData.date).toLocaleDateString('tr-TR', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <div className="relative group cursor-pointer">
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-green-600 transition-all duration-200">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                          </svg>
+                        </div>
+                        <div className="w-full pl-14 pr-14 py-4 text-base border-2 border-gray-200 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-200/50 bg-gradient-to-br from-white to-gray-50 hover:border-green-400 hover:shadow-lg hover:shadow-green-100 transition-all duration-200 font-semibold flex items-center justify-between group-hover:scale-[1.02]">
+                          <span className={selectedDate ? 'text-gray-800' : 'text-gray-400'}>
+                            {selectedDate 
+                              ? format(selectedDate, 'dd MMMM yyyy', { locale: tr })
+                              : 'Tarih seçiniz...'}
+                          </span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-green-600 transition-colors">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start" sideOffset={8}>
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date)
+                          setDatePickerOpen(false)
+                        }}
+                        disabled={(date) => date < today}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   {formData.date && (
                     <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <span className="text-green-600 text-lg">✓</span>
                       <p className="text-sm text-green-700 font-semibold">
-                        {new Date(formData.date).toLocaleDateString('tr-TR', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {selectedDate && format(selectedDate, 'EEEE, d MMMM yyyy', { locale: tr })}
                       </p>
                     </div>
                   )}
@@ -208,29 +246,49 @@ export default function NewMatchPage() {
                     <span className="text-2xl">🕐</span>
                     Saat <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-focus-within:text-green-600 transition-colors">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                      </svg>
-                    </div>
-                    <Input
-                      id="time"
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                      className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all font-medium"
-                      required
-                    />
-                    {formData.time && (
-                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm font-bold">
-                          {formData.time}
+                  <Popover open={timePickerOpen} onOpenChange={setTimePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <div className="relative group cursor-pointer">
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 group-hover:text-green-600 transition-colors">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                        </div>
+                        <div className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 bg-white hover:border-green-400 hover:shadow-md transition-all font-medium flex items-center justify-between">
+                          <span className={formData.time ? 'text-gray-900' : 'text-gray-400'}>
+                            {formData.time || 'Saat seçiniz...'}
+                          </span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="p-4">
+                        <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto">
+                          {timeOptions.map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, time })
+                                setTimePickerOpen(false)
+                              }}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                formData.time === time
+                                  ? 'bg-green-600 text-white shadow-md'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700'
+                              }`}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   {formData.time && (
                     <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <span className="text-blue-600 text-lg">✓</span>
@@ -334,3 +392,4 @@ export default function NewMatchPage() {
     </div>
   )
 }
+

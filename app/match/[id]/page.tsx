@@ -82,6 +82,7 @@ export default function MatchPage() {
     }
   }>>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
+  const [draggedPlayer, setDraggedPlayer] = useState<string | null>(null)
   
   // Formation positions: 1 GK, 3 DF, 2 MF, 1 FW per team
   const [formation, setFormation] = useState<{
@@ -201,6 +202,25 @@ export default function MatchPage() {
     setFormation(newFormation)
   }
 
+  // Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, userId: string) => {
+    if (!match || match.status === 'FINISHED' || match.status === 'PUBLISHED' || !isOwner) return
+    setDraggedPlayer(userId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = async (team: 'A' | 'B', position: string, e: React.DragEvent) => {
+    e.preventDefault()
+    if (!match || !draggedPlayer || match.status === 'FINISHED' || match.status === 'PUBLISHED' || !isOwner) return
+    await handlePositionSelect(team, position, draggedPlayer)
+    setDraggedPlayer(null)
+  }
+
   const handlePositionSelect = async (team: 'A' | 'B', position: string, userId: string | null) => {
     if (!match || !user) return
     const isOwnerCheck = user.id === match.organization.ownerId
@@ -241,6 +261,54 @@ export default function MatchPage() {
     } catch (error) {
       alert('Bir hata oluştu')
       loadFormationFromRoster()
+    }
+  }
+
+  const handleRemoveFromFormation = async (userId: string) => {
+    if (!match || !user) return
+    const isOwnerCheck = user.id === match.organization.ownerId
+    if (!isOwnerCheck || match.status === 'FINISHED' || match.status === 'PUBLISHED') return
+
+    // Find which position this player is in
+    let team: 'A' | 'B' | null = null
+    let position: string | null = null
+
+    for (const [pos, playerId] of Object.entries(formation.teamA)) {
+      if (playerId === userId) {
+        team = 'A'
+        position = pos
+        break
+      }
+    }
+
+    if (!team) {
+      for (const [pos, playerId] of Object.entries(formation.teamB)) {
+        if (playerId === userId) {
+          team = 'B'
+          position = pos
+          break
+        }
+      }
+    }
+
+    if (!team || !position) return
+
+    // Clear the position
+    await handlePositionSelect(team, position, null)
+
+    // Remove from roster
+    try {
+      const res = await fetch(`/api/matches/${params.id}/roster?userId=${userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        fetchMatch()
+      }
+    } catch (error) {
+      console.error('Error removing player:', error)
     }
   }
 
@@ -410,390 +478,555 @@ export default function MatchPage() {
       </section>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Üst Kısım: Saha Krokisi (Sol) ve Maç Detayları (Sağ) */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          {/* Saha Krokisi - Sol (Büyük) */}
+        {/* Üst Kısım: Saha Krokisi + Oyuncu Listesi ve Maç Bilgileri */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Sol Kolon: Saha Krokisi ve Oyuncu Listesi */}
           {(isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED') && (
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span>⚽</span>
-                    Diziliş Ön İzlemesi
-                  </CardTitle>
-                  <CardDescription>
-                    {match.status === 'FINISHED' || match.status === 'PUBLISHED' 
-                      ? 'Maç dizilişi (3-2-1 Dizilişi)'
-                      : 'Oyuncuları pozisyonlarına göre yerleştirin (3-2-1 Dizilişi)'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>⚽</span>
+                  Diziliş Ön İzlemesi
+                </CardTitle>
+                <CardDescription>
+                  {match.status === 'FINISHED' || match.status === 'PUBLISHED' 
+                    ? 'Maç dizilişi (3-2-1 Dizilişi)'
+                    : 'Oyuncuları pozisyonlarına göre yerleştirin (3-2-1 Dizilişi)'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex gap-3">
                   {/* Halısaha Krokisi - Responsive */}
-                  <div className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl p-4 sm:p-6 md:p-8 border-4 border-green-600 shadow-2xl overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
+                  <div className="w-[60%]">
+                    <div className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl border-4 border-green-600 shadow-2xl overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '500px', padding: '0.75rem', width: '100%' }}>
                     {/* Saha Çizgileri */}
                     <div className="absolute inset-0 border-4 border-green-700 rounded-xl"></div>
                     <div className="absolute top-1/2 left-0 right-0 h-1 bg-green-700 opacity-80"></div>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 border-4 border-green-700 rounded-full"></div>
                     
                     {/* Takım A (Alt Taraf) */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1/2">
+                    <div className="absolute bottom-0 left-0 right-0 h-1/2" style={{ paddingBottom: '0.5rem' }}>
                       {/* Kaleci */}
-                      <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-                        {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                          <div className="bg-white border-2 border-blue-500 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] shadow-md">
-                            {formation.teamA.gk ? organizationMembers.find(m => m.userId === formation.teamA.gk)?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
-                          </div>
-                        ) : (
-                          <select
-                            value={formation.teamA.gk || ''}
-                            onChange={(e) => handlePositionSelect('A', 'gk', e.target.value || null)}
-                            disabled={!isOwner || match.status === 'FINISHED'}
-                            className="bg-white border-2 border-blue-500 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] cursor-pointer hover:bg-blue-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      <div 
+                        className="absolute bottom-1 sm:bottom-1 md:bottom-2 left-1/2 transform -translate-x-1/2 z-10"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop('A', 'gk', e)}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div 
+                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
+                              formation.teamA.gk 
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700 shadow-lg' 
+                                : 'bg-white border-blue-500 border-dashed'
+                            }`}
                           >
-                            <option value="">Oyuncu seçiniz</option>
-                            {organizationMembers.map((member) => (
-                              <option key={member.userId} value={member.userId}>
-                                {member.user.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <div className="text-[10px] sm:text-xs text-center mt-1 font-bold text-blue-700">GK</div>
+                            {formation.teamA.gk ? (
+                              <span className="text-white font-bold text-lg sm:text-xl">
+                                {organizationMembers.find(m => m.userId === formation.teamA.gk)?.user.name.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                            )}
+                          </div>
+                          {formation.teamA.gk ? (
+                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-blue-700 shadow-md max-w-[80px] truncate">
+                              {organizationMembers.find(m => m.userId === formation.teamA.gk)?.user.name || ''}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-blue-700">GK</div>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Defanslar */}
-                      <div className="absolute bottom-12 sm:bottom-16 md:bottom-20 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-10">
+                      <div className="absolute bottom-[4.5rem] sm:bottom-[4.75rem] md:bottom-20 left-2 right-2 sm:left-4 sm:right-4 md:left-6 md:right-6 flex justify-between items-center z-10">
                         {['df1', 'df2', 'df3'].map((pos, idx) => (
-                          <div key={pos} className="flex flex-col items-center">
-                            {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                              <div className="bg-white border-2 border-green-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] shadow-md">
-                                {(formation.teamA as any)[pos] ? organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
+                          <div 
+                            key={pos} 
+                            className="flex flex-col items-center"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop('A', pos, e)}
+                          >
+                            <div 
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
+                                (formation.teamA as any)[pos]
+                                  ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-700 shadow-lg' 
+                                  : 'bg-white border-green-500 border-dashed'
+                              }`}
+                            >
+                              {(formation.teamA as any)[pos] ? (
+                                <span className="text-white font-bold text-sm sm:text-base">
+                                  {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
+                                </span>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              )}
+                            </div>
+                            {(formation.teamA as any)[pos] ? (
+                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-green-700 shadow-md max-w-[80px] truncate">
+                                {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || ''}
                               </div>
                             ) : (
-                              <select
-                                value={(formation.teamA as any)[pos] || ''}
-                                onChange={(e) => handlePositionSelect('A', pos, e.target.value || null)}
-                                disabled={!isOwner || match.status === 'FINISHED'}
-                                className="bg-white border-2 border-green-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] cursor-pointer hover:bg-green-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <option value="">Oyuncu seçiniz</option>
-                                {organizationMembers.map((member) => (
-                                  <option key={member.userId} value={member.userId}>
-                                    {member.user.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-green-700">DF{idx + 1}</div>
                             )}
-                            <div className="text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1 font-bold text-green-700">DF{idx + 1}</div>
                           </div>
                         ))}
                       </div>
                       
                       {/* Ortasaha */}
-                      <div className="absolute bottom-24 sm:bottom-28 md:bottom-32 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-10">
+                      <div className="absolute bottom-24 sm:bottom-26 md:bottom-28 left-1/4 right-1/4 flex justify-between items-center z-10">
                         {['mf1', 'mf2'].map((pos, idx) => (
-                          <div key={pos} className="flex flex-col items-center">
-                            {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                              <div className="bg-white border-2 border-yellow-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] shadow-md">
-                                {(formation.teamA as any)[pos] ? organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
+                          <div 
+                            key={pos} 
+                            className="flex flex-col items-center"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop('A', pos, e)}
+                          >
+                            <div 
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
+                                (formation.teamA as any)[pos]
+                                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 border-yellow-700 shadow-lg' 
+                                  : 'bg-white border-yellow-500 border-dashed'
+                              }`}
+                            >
+                              {(formation.teamA as any)[pos] ? (
+                                <span className="text-white font-bold text-sm sm:text-base">
+                                  {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
+                                </span>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              )}
+                            </div>
+                            {(formation.teamA as any)[pos] ? (
+                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-yellow-700 shadow-md max-w-[80px] truncate">
+                                {organizationMembers.find(m => m.userId === (formation.teamA as any)[pos])?.user.name || ''}
                               </div>
                             ) : (
-                              <select
-                                value={(formation.teamA as any)[pos] || ''}
-                                onChange={(e) => handlePositionSelect('A', pos, e.target.value || null)}
-                                disabled={!isOwner || match.status === 'FINISHED'}
-                                className="bg-white border-2 border-yellow-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] cursor-pointer hover:bg-yellow-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <option value="">Oyuncu seçiniz</option>
-                                {organizationMembers.map((member) => (
-                                  <option key={member.userId} value={member.userId}>
-                                    {member.user.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-yellow-700">MF{idx + 1}</div>
                             )}
-                            <div className="text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1 font-bold text-yellow-700">MF{idx + 1}</div>
                           </div>
                         ))}
                       </div>
                       
                       {/* Forvet */}
-                      <div className="absolute bottom-36 sm:bottom-40 md:bottom-44 left-1/2 transform -translate-x-1/2 z-10">
-                        {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                          <div className="bg-white border-2 border-red-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] shadow-md">
-                            {formation.teamA.fw1 ? organizationMembers.find(m => m.userId === formation.teamA.fw1)?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
-                          </div>
-                        ) : (
-                          <select
-                            value={formation.teamA.fw1 || ''}
-                            onChange={(e) => handlePositionSelect('A', 'fw1', e.target.value || null)}
-                            disabled={!isOwner || match.status === 'FINISHED'}
-                            className="bg-white border-2 border-red-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] cursor-pointer hover:bg-red-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      <div 
+                        className="absolute bottom-56 sm:bottom-60 md:bottom-64 left-1/2 transform -translate-x-1/2 z-10"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop('A', 'fw1', e)}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div 
+                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
+                              formation.teamA.fw1 
+                                ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-700 shadow-lg' 
+                                : 'bg-white border-red-500 border-dashed'
+                            }`}
                           >
-                            <option value="">Oyuncu seçiniz</option>
-                            {organizationMembers.map((member) => (
-                              <option key={member.userId} value={member.userId}>
-                                {member.user.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <div className="text-[10px] sm:text-xs text-center mt-1 font-bold text-red-700">FW</div>
+                            {formation.teamA.fw1 ? (
+                              <span className="text-white font-bold text-lg sm:text-xl">
+                                {organizationMembers.find(m => m.userId === formation.teamA.fw1)?.user.name.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                            )}
+                          </div>
+                          {formation.teamA.fw1 ? (
+                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-red-700 shadow-md max-w-[80px] truncate">
+                              {organizationMembers.find(m => m.userId === formation.teamA.fw1)?.user.name || ''}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-red-700">FW</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     {/* Takım B (Üst Taraf) */}
-                    <div className="absolute top-0 left-0 right-0 h-1/2">
+                    <div className="absolute top-0 left-0 right-0 h-1/2" style={{ paddingTop: '0.5rem' }}>
                       {/* Kaleci */}
-                      <div className="absolute top-2 sm:top-4 left-1/2 transform -translate-x-1/2 z-10">
-                        {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                          <div className="bg-white border-2 border-blue-500 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] shadow-md">
-                            {formation.teamB.gk ? organizationMembers.find(m => m.userId === formation.teamB.gk)?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
-                          </div>
-                        ) : (
-                          <select
-                            value={formation.teamB.gk || ''}
-                            onChange={(e) => handlePositionSelect('B', 'gk', e.target.value || null)}
-                            disabled={!isOwner || match.status === 'FINISHED'}
-                            className="bg-white border-2 border-blue-500 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] cursor-pointer hover:bg-blue-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      <div 
+                        className="absolute top-1 sm:top-1 md:top-2 left-1/2 transform -translate-x-1/2 z-10"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop('B', 'gk', e)}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div 
+                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
+                              formation.teamB.gk 
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700 shadow-lg' 
+                                : 'bg-white border-blue-500 border-dashed'
+                            }`}
                           >
-                            <option value="">Oyuncu seçiniz</option>
-                            {organizationMembers.map((member) => (
-                              <option key={member.userId} value={member.userId}>
-                                {member.user.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <div className="text-[10px] sm:text-xs text-center mt-1 font-bold text-blue-700">GK</div>
+                            {formation.teamB.gk ? (
+                              <span className="text-white font-bold text-lg sm:text-xl">
+                                {organizationMembers.find(m => m.userId === formation.teamB.gk)?.user.name.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                            )}
+                          </div>
+                          {formation.teamB.gk ? (
+                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-blue-700 shadow-md max-w-[80px] truncate">
+                              {organizationMembers.find(m => m.userId === formation.teamB.gk)?.user.name || ''}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-blue-700">GK</div>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Defanslar */}
-                      <div className="absolute top-12 sm:top-16 md:top-20 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-10">
+                      <div className="absolute top-[4.5rem] sm:top-[4.75rem] md:top-20 left-2 right-2 sm:left-4 sm:right-4 md:left-6 md:right-6 flex justify-between items-center z-10">
                         {['df1', 'df2', 'df3'].map((pos, idx) => (
-                          <div key={pos} className="flex flex-col items-center">
-                            {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                              <div className="bg-white border-2 border-green-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] shadow-md">
-                                {(formation.teamB as any)[pos] ? organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
+                          <div 
+                            key={pos} 
+                            className="flex flex-col items-center"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop('B', pos, e)}
+                          >
+                            <div 
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
+                                (formation.teamB as any)[pos]
+                                  ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-700 shadow-lg' 
+                                  : 'bg-white border-green-500 border-dashed'
+                              }`}
+                            >
+                              {(formation.teamB as any)[pos] ? (
+                                <span className="text-white font-bold text-sm sm:text-base">
+                                  {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
+                                </span>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              )}
+                            </div>
+                            {(formation.teamB as any)[pos] ? (
+                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-green-700 shadow-md max-w-[80px] truncate">
+                                {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || ''}
                               </div>
                             ) : (
-                              <select
-                                value={(formation.teamB as any)[pos] || ''}
-                                onChange={(e) => handlePositionSelect('B', pos, e.target.value || null)}
-                                disabled={!isOwner || match.status === 'FINISHED'}
-                                className="bg-white border-2 border-green-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] cursor-pointer hover:bg-green-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <option value="">Oyuncu seçiniz</option>
-                                {organizationMembers.map((member) => (
-                                  <option key={member.userId} value={member.userId}>
-                                    {member.user.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-green-700">DF{idx + 1}</div>
                             )}
-                            <div className="text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1 font-bold text-green-700">DF{idx + 1}</div>
                           </div>
                         ))}
                       </div>
                       
                       {/* Ortasaha */}
-                      <div className="absolute top-24 sm:top-28 md:top-32 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2 z-10">
+                      <div className="absolute top-24 sm:top-26 md:top-28 left-1/4 right-1/4 flex justify-between items-center z-10">
                         {['mf1', 'mf2'].map((pos, idx) => (
-                          <div key={pos} className="flex flex-col items-center">
-                            {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                              <div className="bg-white border-2 border-yellow-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] shadow-md">
-                                {(formation.teamB as any)[pos] ? organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
+                          <div 
+                            key={pos} 
+                            className="flex flex-col items-center"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop('B', pos, e)}
+                          >
+                            <div 
+                              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 flex items-center justify-center ${
+                                (formation.teamB as any)[pos]
+                                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 border-yellow-700 shadow-lg' 
+                                  : 'bg-white border-yellow-500 border-dashed'
+                              }`}
+                            >
+                              {(formation.teamB as any)[pos] ? (
+                                <span className="text-white font-bold text-sm sm:text-base">
+                                  {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name.charAt(0).toUpperCase() || '?'}
+                                </span>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                  <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                              )}
+                            </div>
+                            {(formation.teamB as any)[pos] ? (
+                              <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-yellow-700 shadow-md max-w-[80px] truncate">
+                                {organizationMembers.find(m => m.userId === (formation.teamB as any)[pos])?.user.name || ''}
                               </div>
                             ) : (
-                              <select
-                                value={(formation.teamB as any)[pos] || ''}
-                                onChange={(e) => handlePositionSelect('B', pos, e.target.value || null)}
-                                disabled={!isOwner || match.status === 'FINISHED'}
-                                className="bg-white border-2 border-yellow-600 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-center min-w-[80px] sm:min-w-[100px] cursor-pointer hover:bg-yellow-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <option value="">Oyuncu seçiniz</option>
-                                {organizationMembers.map((member) => (
-                                  <option key={member.userId} value={member.userId}>
-                                    {member.user.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-yellow-700">MF{idx + 1}</div>
                             )}
-                            <div className="text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1 font-bold text-yellow-700">MF{idx + 1}</div>
                           </div>
                         ))}
                       </div>
                       
                       {/* Forvet */}
-                      <div className="absolute top-36 sm:top-40 md:top-44 left-1/2 transform -translate-x-1/2 z-10">
-                        {match.status === 'FINISHED' || match.status === 'PUBLISHED' ? (
-                          <div className="bg-white border-2 border-red-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] shadow-md">
-                            {formation.teamB.fw1 ? organizationMembers.find(m => m.userId === formation.teamB.fw1)?.user.name || 'Oyuncu seçiniz' : 'Oyuncu seçiniz'}
-                          </div>
-                        ) : (
-                          <select
-                            value={formation.teamB.fw1 || ''}
-                            onChange={(e) => handlePositionSelect('B', 'fw1', e.target.value || null)}
-                            disabled={!isOwner || match.status === 'FINISHED'}
-                            className="bg-white border-2 border-red-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-center min-w-[100px] sm:min-w-[120px] cursor-pointer hover:bg-red-50 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      <div 
+                        className="absolute top-56 sm:top-60 md:top-64 left-1/2 transform -translate-x-1/2 z-10"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop('B', 'fw1', e)}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div 
+                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 flex items-center justify-center ${
+                              formation.teamB.fw1 
+                                ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-700 shadow-lg' 
+                                : 'bg-white border-red-500 border-dashed'
+                            }`}
                           >
-                            <option value="">Oyuncu seçiniz</option>
-                            {organizationMembers.map((member) => (
-                              <option key={member.userId} value={member.userId}>
-                                {member.user.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <div className="text-[10px] sm:text-xs text-center mt-1 font-bold text-red-700">FW</div>
+                            {formation.teamB.fw1 ? (
+                              <span className="text-white font-bold text-lg sm:text-xl">
+                                {organizationMembers.find(m => m.userId === formation.teamB.fw1)?.user.name.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                            )}
+                          </div>
+                          {formation.teamB.fw1 ? (
+                            <div className="mt-0.5 bg-white px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold text-red-700 shadow-md max-w-[80px] truncate">
+                              {organizationMembers.find(m => m.userId === formation.teamB.fw1)?.user.name || ''}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] sm:text-[10px] text-center mt-0.5 font-bold text-red-700">FW</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     {/* Takım Etiketleri */}
-                    <div className="absolute bottom-1 left-2 sm:left-4 text-[10px] sm:text-xs font-bold text-white bg-blue-600 px-2 py-1 rounded shadow-md z-20">Takım A</div>
-                    <div className="absolute top-1 right-2 sm:right-4 text-[10px] sm:text-xs font-bold text-white bg-red-600 px-2 py-1 rounded shadow-md z-20">Takım B</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Maç Detayları - Sağ */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-xl border-2 border-green-200 bg-white">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <span className="text-2xl">📋</span>
-                  Maç Bilgileri
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-6">
-                  {/* Tarih ve Saat */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
-                      <Label className="text-xs text-gray-600 mb-1 block">📅 Tarih</Label>
-                      <p className="text-sm font-bold text-gray-900">
-                        {new Date(match.date).toLocaleDateString('tr-TR', {
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                      </p>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
-                      <Label className="text-xs text-gray-600 mb-1 block">🕐 Saat</Label>
-                      <p className="text-sm font-bold text-gray-900">{match.time}</p>
+                    <div className="absolute bottom-0.5 left-2 sm:left-3 text-[9px] sm:text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded shadow-md z-20">Takım A</div>
+                    <div className="absolute top-0.5 right-2 sm:right-3 text-[9px] sm:text-[10px] font-bold text-white bg-red-600 px-1.5 py-0.5 rounded shadow-md z-20">Takım B</div>
                     </div>
                   </div>
                   
-                  {/* Venue Section - Editable */}
-                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-xs text-gray-600">🏟️ Saha Adı</Label>
-                      {isOwner && match.status !== 'FINISHED' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (showVenueEdit) {
-                              setShowVenueEdit(false)
-                              setVenueValue(match.venue || '')
-                            } else {
-                              setShowVenueEdit(true)
-                            }
-                          }}
-                          className="h-6 w-6 p-0"
-                        >
-                          {showVenueEdit ? '✕' : match.venue ? '✏️' : '➕'}
-                        </Button>
-                      )}
-                    </div>
-                    {showVenueEdit ? (
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          placeholder="Saha adı girin..."
-                          value={venueValue}
-                          onChange={(e) => setVenueValue(e.target.value)}
-                          className="flex-1 text-sm"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleUpdateVenue}
-                          disabled={savingVenue}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {savingVenue ? '...' : '✓'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className={`text-sm font-bold ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
-                        {match.venue || 'Saha adı belirtilmemiş'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Capacity Section - Editable */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-xs text-gray-600">👥 Kapasite</Label>
-                      {isOwner && match.status !== 'FINISHED' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (showCapacityEdit) {
-                              setShowCapacityEdit(false)
-                              setCapacityValue(match.capacity)
-                            } else {
-                              setShowCapacityEdit(true)
-                            }
-                          }}
-                          className="h-6 w-6 p-0"
-                        >
-                          {showCapacityEdit ? '✕' : '✏️'}
-                        </Button>
-                      )}
-                    </div>
-                    {showCapacityEdit ? (
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          min="2"
-                          max="22"
-                          value={capacityValue}
-                          onChange={(e) => setCapacityValue(parseInt(e.target.value) || 2)}
-                          className="flex-1 text-sm"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleUpdateCapacity}
-                          disabled={savingCapacity}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {savingCapacity ? '...' : '✓'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-2xl font-black text-green-700">
-                          {match.capacity}
-                        </p>
-                        {match.roster.length > 0 && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            {match.roster.length} oyuncu kayıtlı
-                          </p>
-                        )}
-                      </div>
-                    )}
+                  {/* Oyuncu Listesi - Kompakt */}
+                  <div className="w-[40%]">
+                    <Card className="shadow-xl border-2 border-purple-200 bg-white h-full">
+                      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b p-1.5">
+                        <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
+                          <span className="text-sm">👥</span>
+                          Oyuncular
+                        </CardTitle>
+                        <CardDescription className="text-[9px] mt-0.5">
+                          Sürükleyip bırakın
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-1.5">
+                        <div className="space-y-0.5 max-h-[480px] overflow-y-auto">
+                          {organizationMembers.length === 0 ? (
+                            <div className="text-center py-4">
+                              <div className="text-2xl mb-1">⚽</div>
+                              <p className="text-gray-600 text-xs">Henüz oyuncu yok</p>
+                            </div>
+                          ) : (
+                            organizationMembers.map((member) => {
+                              const isInFormation = Object.values(formation.teamA).includes(member.userId) || 
+                                                   Object.values(formation.teamB).includes(member.userId)
+                              return (
+                                <div
+                                  key={member.userId}
+                                  draggable={!isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'}
+                                  onDragStart={(e) => handleDragStart(e, member.userId)}
+                                  className={`p-1 border rounded-md flex items-center gap-1.5 transition-all ${
+                                    isInFormation 
+                                      ? 'bg-gray-100 border-gray-300 opacity-60 cursor-not-allowed' 
+                                      : 'bg-white border-gray-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 hover:shadow-sm cursor-grab active:cursor-grabbing'
+                                  } ${!isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED' ? 'cursor-default' : ''}`}
+                                >
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm flex-shrink-0 ${
+                                    isInFormation 
+                                      ? 'bg-gray-400' 
+                                      : 'bg-gradient-to-br from-purple-500 to-pink-600'
+                                  }`}>
+                                    {member.user.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-semibold text-xs truncate ${isInFormation ? 'text-gray-500' : 'text-gray-900'}`}>
+                                      {member.user.name}
+                                    </p>
+                                    {isInFormation && (
+                                      <p className="text-[9px] text-gray-500 font-medium">
+                                        Dizilişte
+                                      </p>
+                                    )}
+                                  </div>
+                                  {isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleRemoveFromFormation(member.userId)
+                                      }}
+                                      className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-0.5 flex-shrink-0 transition-colors"
+                                      title="Kadrodan çıkar"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                      </svg>
+                                    </button>
+                                  )}
+                                  {isInFormation && (!isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED') && (
+                                    <div className="text-gray-400 flex-shrink-0">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
+
+          {/* Sağ Kolon: Maç Bilgileri */}
+          <Card className="shadow-xl border-2 border-green-200 bg-white h-full">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {/* Üst Satır: Tarih, Saat, Kapasite */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Tarih */}
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+                  <Label className="text-xs text-gray-600 mb-1 block">📅 Tarih</Label>
+                  <p className="text-sm font-bold text-gray-900">
+                    {new Date(match.date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+                
+                {/* Saat */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                  <Label className="text-xs text-gray-600 mb-1 block">🕐 Saat</Label>
+                  <p className="text-sm font-bold text-gray-900">{match.time}</p>
+                </div>
+
+                {/* Capacity Section - Editable */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs text-gray-600">👥 Kapasite</Label>
+                    {isOwner && match.status !== 'FINISHED' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (showCapacityEdit) {
+                            setShowCapacityEdit(false)
+                            setCapacityValue(match.capacity)
+                          } else {
+                            setShowCapacityEdit(true)
+                          }
+                        }}
+                        className="h-6 w-6 p-0"
+                      >
+                        {showCapacityEdit ? '✕' : '✏️'}
+                      </Button>
+                    )}
+                  </div>
+                  {showCapacityEdit ? (
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="number"
+                        min="2"
+                        max="22"
+                        value={capacityValue}
+                        onChange={(e) => setCapacityValue(parseInt(e.target.value) || 2)}
+                        className="flex-1 text-sm h-8"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateCapacity}
+                        disabled={savingCapacity}
+                        className="bg-green-600 hover:bg-green-700 h-8 px-2"
+                      >
+                        {savingCapacity ? '...' : '✓'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xl font-black text-green-700">
+                        {match.capacity}
+                      </p>
+                      {match.roster.length > 0 && (
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          {match.roster.length} oyuncu
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Alt Satır: Saha Adı - Tam Genişlik */}
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs text-gray-600">🏟️ Saha Adı</Label>
+                  {isOwner && match.status !== 'FINISHED' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (showVenueEdit) {
+                          setShowVenueEdit(false)
+                          setVenueValue(match.venue || '')
+                        } else {
+                          setShowVenueEdit(true)
+                        }
+                      }}
+                      className="h-6 w-6 p-0"
+                    >
+                      {showVenueEdit ? '✕' : match.venue ? '✏️' : '➕'}
+                    </Button>
+                  )}
+                </div>
+                {showVenueEdit ? (
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Saha adı girin..."
+                      value={venueValue}
+                      onChange={(e) => setVenueValue(e.target.value)}
+                      className="flex-1 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleUpdateVenue}
+                      disabled={savingVenue}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {savingVenue ? '...' : '✓'}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className={`text-sm font-bold ${match.venue ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+                    {match.venue || 'Saha adı belirtilmemiş'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         </div>
 
-        {/* Alt Kısım: Skor Girişi (Sol) ve Kadro Listesi (Sağ) */}
+        {/* Alt Kısım: Skor Girişi ve Kadro Listesi */}
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Skor Girişi */}
           {isOwner && match.status !== 'FINISHED' && (
