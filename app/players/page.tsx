@@ -13,6 +13,7 @@ interface Player {
   name: string
   email: string
   phone: string | null
+  role: string
   createdAt: string
   _count: {
     organizations: number
@@ -197,10 +198,21 @@ export default function PlayersPage() {
                       >
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                              player.role === 'ADMIN' 
+                                ? 'bg-gradient-to-br from-yellow-500 to-orange-600' 
+                                : 'bg-gradient-to-br from-green-500 to-emerald-600'
+                            }`}>
                               {player.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-semibold text-gray-900 hover:text-green-600 transition-colors">{player.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-900 hover:text-green-600 transition-colors">{player.name}</span>
+                              {player.role === 'ADMIN' && (
+                                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                  👑 Yönetici
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="p-4">

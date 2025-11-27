@@ -46,6 +46,11 @@ model User {
   password      String
   name          String
   phone         String?
+  position      String?   // Tercih edilen mevki: KALECI, DEFANS, ORTASAHA, FORVET
+  strongFoot    String?   // Güçlü ayak: SOL, SAĞ, İKİSİ
+  height        Int?      // Boy (cm)
+  weight        Int?      // Kilo (kg)
+  age           Int?      // Yaş
   role          UserRole  @default(PLAYER)
   plan          AdminPlan @default(FREE) // Admin plan (FREE or PREMIUM)
   createdAt     DateTime  @default(now())

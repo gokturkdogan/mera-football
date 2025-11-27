@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -27,10 +27,16 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    position: '' as string | null,
+    strongFoot: '' as string | null,
+    height: '' as number | null,
+    weight: '' as number | null,
+    age: '' as number | null,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
+  const profileInfoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchUser()
@@ -49,6 +55,11 @@ export default function ProfilePage() {
       setFormData({
         name: data.user.name || '',
         phone: data.user.phone || '',
+        position: data.user.position || null,
+        strongFoot: data.user.strongFoot || null,
+        height: data.user.height || null,
+        weight: data.user.weight || null,
+        age: data.user.age || null,
       })
     } catch (error) {
       router.push('/login')
@@ -110,6 +121,24 @@ export default function ProfilePage() {
   const isAdmin = user?.role === 'ADMIN'
   const adminPlan = user?.plan || 'FREE'
 
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = () => {
+    if (!user) return 0
+    const optionalFields = ['phone', 'position', 'strongFoot', 'height', 'weight', 'age']
+    const filledFields = optionalFields.filter(field => user[field] !== null && user[field] !== undefined && user[field] !== '')
+    return Math.round((filledFields.length / optionalFields.length) * 100)
+  }
+
+  const profileCompletion = calculateProfileCompletion()
+  const isProfileComplete = profileCompletion === 100
+
+  const handleCompleteProfile = () => {
+    setShowEditForm(true)
+    setTimeout(() => {
+      profileInfoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       <Navbar />
@@ -124,7 +153,7 @@ export default function ProfilePage() {
             <div className="flex-1">
               <h1 className="text-4xl font-black mb-2">{user?.name}</h1>
               <p className="text-xl opacity-90 mb-3">{user?.email}</p>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
                   isAdmin 
                     ? 'bg-yellow-400 text-yellow-900' 
@@ -137,93 +166,91 @@ export default function ProfilePage() {
                     📞 {user.phone}
                   </span>
                 )}
+                {user?.position && (
+                  <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm">
+                    ⚽ {user.position}
+                  </span>
+                )}
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Profile Completion Banner */}
+      {!isProfileComplete && (
+        <div className="bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 border-b-2 border-yellow-400">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-2xl">📋</span>
+                  <h3 className="text-lg font-bold text-gray-900">Profilinizi Tamamlayın</h3>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                  <div
+                    className={`h-3 rounded-full transition-all ${
+                      profileCompletion >= 80 ? 'bg-green-500' :
+                      profileCompletion >= 50 ? 'bg-yellow-500' :
+                      'bg-orange-500'
+                    }`}
+                    style={{ width: `${profileCompletion}%` }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-700">
+                  Profil tamamlanma oranı: <span className="font-bold">{profileCompletion}%</span>
+                </p>
+              </div>
+              <Button
+                onClick={handleCompleteProfile}
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold px-6"
+              >
+                Tamamla
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Stats Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Organization Count Card */}
           <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-4xl font-black text-green-600 mb-2">
+                <div className="text-5xl font-black text-green-600 mb-2">
                   {organizations.length}
                 </div>
-                <div className="text-sm text-gray-600 font-medium">
+                <div className="text-lg text-gray-700 font-semibold">
                   {isAdmin ? 'Organizasyon' : 'Katıldığım Organizasyon'}
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Plan Status Card (only for admins) */}
           {isAdmin && (
-            <>
-              <Card className={`border-2 ${adminPlan === 'PREMIUM' ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'}`}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className={`text-4xl font-black mb-2 ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                      {adminPlan === 'PREMIUM' ? '⭐' : '🆓'}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">
-                      Plan Durumu
-                    </div>
-                    <div className={`text-lg font-bold mt-1 ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                      {adminPlan}
-                    </div>
+            <Card className={`border-2 ${adminPlan === 'PREMIUM' ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'}`}>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className={`text-5xl font-black mb-2 ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
+                    {adminPlan === 'PREMIUM' ? '⭐' : '🆓'}
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="text-4xl font-black text-blue-600 mb-2">
-                      {organizations.length}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">
-                      Toplam Organizasyon
-                    </div>
+                  <div className="text-lg text-gray-700 font-semibold mb-1">
+                    Plan Durumu
                   </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {!isAdmin && (
-            <>
-              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="text-4xl font-black text-blue-600 mb-2">
-                      {2 - organizations.length}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">
-                      Kalan Kontenjan
-                    </div>
+                  <div className={`text-xl font-bold ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
+                    {adminPlan}
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="text-4xl font-black text-purple-600 mb-2">
-                      ⭐
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">
-                      Puanlama Sistemi
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Profile Info Card */}
-          <Card className="border-2 hover:shadow-xl transition-shadow">
+          <Card ref={profileInfoRef} className="border-2 hover:shadow-xl transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="text-2xl">Profil Bilgileri</CardTitle>
@@ -251,6 +278,36 @@ export default function ProfilePage() {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <Label className="text-xs text-gray-500 uppercase">Telefon</Label>
                       <p className="text-lg font-semibold text-gray-900">{user.phone}</p>
+                    </div>
+                  )}
+                  {user?.position && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <Label className="text-xs text-gray-500 uppercase">Tercih Edilen Mevki</Label>
+                      <p className="text-lg font-semibold text-gray-900">{user.position}</p>
+                    </div>
+                  )}
+                  {user?.strongFoot && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <Label className="text-xs text-gray-500 uppercase">Güçlü Ayak</Label>
+                      <p className="text-lg font-semibold text-gray-900">{user.strongFoot}</p>
+                    </div>
+                  )}
+                  {user?.height && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <Label className="text-xs text-gray-500 uppercase">Boy</Label>
+                      <p className="text-lg font-semibold text-gray-900">{user.height} cm</p>
+                    </div>
+                  )}
+                  {user?.weight && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <Label className="text-xs text-gray-500 uppercase">Kilo</Label>
+                      <p className="text-lg font-semibold text-gray-900">{user.weight} kg</p>
+                    </div>
+                  )}
+                  {user?.age && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <Label className="text-xs text-gray-500 uppercase">Yaş</Label>
+                      <p className="text-lg font-semibold text-gray-900">{user.age}</p>
                     </div>
                   )}
                   <div className="p-4 bg-gray-50 rounded-lg">
@@ -302,6 +359,73 @@ export default function ProfilePage() {
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="0555 123 45 67"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Tercih Edilen Mevki (Opsiyonel)</Label>
+                    <select
+                      id="position"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={formData.position || ''}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value || null })}
+                    >
+                      <option value="">Mevki Seçiniz</option>
+                      <option value="KALECI">Kaleci</option>
+                      <option value="DEFANS">Defans</option>
+                      <option value="ORTASAHA">Ortasaha</option>
+                      <option value="FORVET">Forvet</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="strongFoot">Güçlü Ayak (Opsiyonel)</Label>
+                    <select
+                      id="strongFoot"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={formData.strongFoot || ''}
+                      onChange={(e) => setFormData({ ...formData, strongFoot: e.target.value || null })}
+                    >
+                      <option value="">Güçlü Ayak Seçiniz</option>
+                      <option value="SOL">Sol</option>
+                      <option value="SAĞ">Sağ</option>
+                      <option value="İKİSİ">İkisi</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="height">Boy (cm) (Opsiyonel)</Label>
+                      <Input
+                        id="height"
+                        type="number"
+                        min="100"
+                        max="250"
+                        value={formData.height || ''}
+                        onChange={(e) => setFormData({ ...formData, height: e.target.value ? parseInt(e.target.value) : null })}
+                        placeholder="175"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weight">Kilo (kg) (Opsiyonel)</Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        min="30"
+                        max="200"
+                        value={formData.weight || ''}
+                        onChange={(e) => setFormData({ ...formData, weight: e.target.value ? parseInt(e.target.value) : null })}
+                        placeholder="75"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Yaş (Opsiyonel)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        min="10"
+                        max="100"
+                        value={formData.age || ''}
+                        onChange={(e) => setFormData({ ...formData, age: e.target.value ? parseInt(e.target.value) : null })}
+                        placeholder="25"
+                      />
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={saving}>
                     {saving ? 'Kaydediliyor...' : 'Kaydet'}
@@ -378,93 +502,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Plan Info Section (for Admins) */}
-        {isAdmin && (
-          <Card className="mt-6 border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <span>💎</span>
-                Plan Bilgileri
-              </CardTitle>
-              <CardDescription>
-                Organizasyonlarınızın plan durumları ve özellikleri
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-white rounded-lg border border-yellow-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Free Plan Özellikleri</h4>
-                  <ul className="space-y-1 text-sm text-gray-600">
-                    <li>• Haftada maksimum 1 maç</li>
-                    <li>• Maksimum 10 oyuncu</li>
-                    <li>• Temel organizasyon yönetimi</li>
-                  </ul>
-                </div>
-                <div className="p-4 bg-white rounded-lg border border-yellow-300">
-                  <h4 className="font-semibold text-gray-900 mb-2">Premium Plan Özellikleri</h4>
-                  <ul className="space-y-1 text-sm text-gray-600">
-                    <li>• Sınırsız maç oluşturma</li>
-                    <li>• Sınırsız oyuncu ekleme</li>
-                    <li>• Öncelikli destek</li>
-                  </ul>
-                </div>
-              </div>
-              {adminPlan === 'FREE' && (
-                <div className="mt-4">
-                  <Link href="/payment">
-                    <Button className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600">
-                      Premium Plan Satın Al
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Player Info Section */}
-        {!isAdmin && (
-          <Card className="mt-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <span>⚽</span>
-                Oyuncu Bilgileri
-              </CardTitle>
-              <CardDescription>
-                Oyuncu planı özellikleri ve limitleriniz
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-white rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-gray-900 mb-3">Mevcut Durum</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Katıldığım Organizasyon:</span>
-                      <span className="font-semibold">{organizations.length}/2</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${(organizations.length / 2) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-gray-900 mb-3">Ücretsiz Özellikler</h4>
-                  <ul className="space-y-1 text-sm text-gray-600">
-                    <li>✓ Maksimum 2 organizasyona katıl</li>
-                    <li>✓ Maç bilgilerine erişim</li>
-                    <li>✓ Oyuncu puanlama sistemi</li>
-                    <li>✓ Profil yönetimi</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )

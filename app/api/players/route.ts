@@ -23,16 +23,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get all players (users with role PLAYER)
+    // Get all players and admins (users with role PLAYER or ADMIN)
+    // Admins can also be added to matches as players
     const players = await prisma.user.findMany({
       where: {
-        role: 'PLAYER',
+        role: {
+          in: ['PLAYER', 'ADMIN'],
+        },
       },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
+        role: true,
         createdAt: true,
         _count: {
           select: {

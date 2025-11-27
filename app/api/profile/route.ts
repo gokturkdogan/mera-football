@@ -6,6 +6,11 @@ import { z } from 'zod'
 const updateProfileSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
+  position: z.enum(['KALECI', 'DEFANS', 'ORTASAHA', 'FORVET']).optional().nullable(),
+  strongFoot: z.enum(['SOL', 'SAĞ', 'İKİSİ']).optional().nullable(),
+  height: z.number().int().min(100).max(250).optional().nullable(),
+  weight: z.number().int().min(30).max(200).optional().nullable(),
+  age: z.number().int().min(10).max(100).optional().nullable(),
 })
 
 // PATCH - Update profile
@@ -37,12 +42,22 @@ export async function PATCH(request: NextRequest) {
       data: {
         name: validatedData.name,
         phone: validatedData.phone,
+        position: validatedData.position ?? null,
+        strongFoot: validatedData.strongFoot ?? null,
+        height: validatedData.height ?? null,
+        weight: validatedData.weight ?? null,
+        age: validatedData.age ?? null,
       },
       select: {
         id: true,
         email: true,
         name: true,
         phone: true,
+        position: true,
+        strongFoot: true,
+        height: true,
+        weight: true,
+        age: true,
         role: true,
       },
     })

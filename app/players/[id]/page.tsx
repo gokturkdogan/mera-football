@@ -13,6 +13,11 @@ interface Player {
   name: string
   email: string
   phone: string | null
+  position: string | null
+  strongFoot: string | null
+  height: number | null
+  weight: number | null
+  age: number | null
   role: string
   plan: string
   createdAt: string
@@ -111,6 +116,11 @@ export default function PlayerDetailPage() {
                     📞 {player.phone}
                   </span>
                 )}
+                {player.position && (
+                  <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm">
+                    ⚽ {player.position}
+                  </span>
+                )}
                 <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
                   player.plan === 'PREMIUM' 
                     ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900' 
@@ -199,6 +209,46 @@ export default function PlayerDetailPage() {
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
                     <Label className="text-xs text-gray-600 mb-1 block">📞 Telefon</Label>
                     <p className="text-sm font-bold text-gray-900">{player.phone}</p>
+                  </div>
+                )}
+
+                {player.position && (
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                    <Label className="text-xs text-gray-600 mb-1 block">⚽ Tercih Edilen Mevki</Label>
+                    <p className="text-sm font-bold text-gray-900">{player.position}</p>
+                  </div>
+                )}
+
+                {player.strongFoot && (
+                  <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-xl border border-orange-200">
+                    <Label className="text-xs text-gray-600 mb-1 block">🦶 Güçlü Ayak</Label>
+                    <p className="text-sm font-bold text-gray-900">{player.strongFoot}</p>
+                  </div>
+                )}
+
+                {(player.height || player.weight || player.age) && (
+                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 rounded-xl border border-cyan-200">
+                    <Label className="text-xs text-gray-600 mb-2 block">📏 Fiziksel Özellikler</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {player.height && (
+                        <div>
+                          <p className="text-xs text-gray-600">Boy</p>
+                          <p className="text-sm font-bold text-gray-900">{player.height} cm</p>
+                        </div>
+                      )}
+                      {player.weight && (
+                        <div>
+                          <p className="text-xs text-gray-600">Kilo</p>
+                          <p className="text-sm font-bold text-gray-900">{player.weight} kg</p>
+                        </div>
+                      )}
+                      {player.age && (
+                        <div>
+                          <p className="text-xs text-gray-600">Yaş</p>
+                          <p className="text-sm font-bold text-gray-900">{player.age}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
