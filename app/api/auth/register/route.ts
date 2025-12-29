@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already exists' },
+        { error: 'Bu e-posta kullanılmaktadır' },
         { status: 400 }
       )
     }
@@ -42,15 +42,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Generate token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    })
-
-    // Set cookie
-    const response = NextResponse.json({
+    // Return success without setting token/cookie
+    // User needs to login manually after registration
+    return NextResponse.json({
+      message: 'User created successfully',
       user: {
         id: user.id,
         email: user.email,
@@ -58,16 +53,6 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
     })
-
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    })
-
-    return response
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

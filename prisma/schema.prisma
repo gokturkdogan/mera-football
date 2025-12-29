@@ -51,6 +51,12 @@ model User {
   height        Int?      // Boy (cm)
   weight        Int?      // Kilo (kg)
   age           Int?      // Yaş
+  showPhone     Boolean   @default(false) // Telefon listelemede gösterilsin mi?
+  showPosition  Boolean   @default(false) // Mevki listelemede gösterilsin mi?
+  showStrongFoot Boolean  @default(false) // Güçlü ayak listelemede gösterilsin mi?
+  showHeight    Boolean   @default(false) // Boy listelemede gösterilsin mi?
+  showWeight    Boolean   @default(false) // Kilo listelemede gösterilsin mi?
+  showAge       Boolean   @default(false) // Yaş listelemede gösterilsin mi?
   role          UserRole  @default(PLAYER)
   plan          AdminPlan @default(FREE) // Admin plan (FREE or PREMIUM)
   createdAt     DateTime  @default(now())

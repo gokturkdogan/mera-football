@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
         role: true,
         plan: true,
         createdAt: true,
+        showPhone: true,
+        showPosition: true,
+        showStrongFoot: true,
+        showHeight: true,
+        showWeight: true,
+        showAge: true,
       },
     })
 

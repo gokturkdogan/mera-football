@@ -18,9 +18,11 @@ import {
   DialogBody,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     email: '',
@@ -28,7 +30,6 @@ export default function RegisterPage() {
     name: '',
     role: searchParams?.get('role') || 'PLAYER',
   })
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
@@ -43,10 +44,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     
     if (!agreedToTerms) {
-      setError('Üyelik sözleşmesini kabul etmelisiniz')
+      showToast('Üyelik sözleşmesini kabul etmelisiniz', 'warning')
       return
     }
     
@@ -63,17 +63,22 @@ export default function RegisterPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Kayıt başarısız')
+        const errorMessage = data.error || 'Kayıt başarısız'
+        showToast(errorMessage, 'error')
         setLoading(false)
         return
       }
 
-      // Wait a bit for cookie to be set, then redirect
+      // Success - show toast and redirect to login
+      showToast('Hesap başarıyla oluşturuldu', 'success')
+      
+      // Wait a bit for toast to show, then redirect to login
       setTimeout(() => {
-        window.location.href = '/'
-      }, 100)
+        router.push('/login')
+      }, 1000)
     } catch (err) {
-      setError('Bir hata oluştu')
+      const errorMessage = 'Bir hata oluştu. Lütfen tekrar deneyin.'
+      showToast(errorMessage, 'error')
       setLoading(false)
     }
   }
@@ -226,12 +231,6 @@ export default function RegisterPage() {
                     </div>
                     <p className="text-xs text-gray-500">Minimum 6 karakter</p>
                   </div>
-
-                  {error && (
-                    <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
-                      {error}
-                    </div>
-                  )}
                 </div>
               </div>
 

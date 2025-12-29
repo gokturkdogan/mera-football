@@ -11,6 +11,12 @@ const updateProfileSchema = z.object({
   height: z.number().int().min(100).max(250).optional().nullable(),
   weight: z.number().int().min(30).max(200).optional().nullable(),
   age: z.number().int().min(10).max(100).optional().nullable(),
+  showPhone: z.boolean().optional(),
+  showPosition: z.boolean().optional(),
+  showStrongFoot: z.boolean().optional(),
+  showHeight: z.boolean().optional(),
+  showWeight: z.boolean().optional(),
+  showAge: z.boolean().optional(),
 })
 
 // PATCH - Update profile
@@ -47,6 +53,12 @@ export async function PATCH(request: NextRequest) {
         height: validatedData.height ?? null,
         weight: validatedData.weight ?? null,
         age: validatedData.age ?? null,
+        showPhone: validatedData.showPhone ?? false,
+        showPosition: validatedData.showPosition ?? false,
+        showStrongFoot: validatedData.showStrongFoot ?? false,
+        showHeight: validatedData.showHeight ?? false,
+        showWeight: validatedData.showWeight ?? false,
+        showAge: validatedData.showAge ?? false,
       },
       select: {
         id: true,
@@ -59,6 +71,12 @@ export async function PATCH(request: NextRequest) {
         weight: true,
         age: true,
         role: true,
+        showPhone: true,
+        showPosition: true,
+        showStrongFoot: true,
+        showHeight: true,
+        showWeight: true,
+        showAge: true,
       },
     })
 

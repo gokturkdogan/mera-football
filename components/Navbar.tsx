@@ -149,43 +149,69 @@ export default function Navbar() {
             ) : user ? (
               <>
                 <div className="hidden md:flex items-center gap-3">
-                  <span className="text-sm text-gray-700 font-medium">{user.name}</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="bg-white gap-2 border-2 hover:border-green-500 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
-                          {user.name.charAt(0).toUpperCase()}
+                      <button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-green-50 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-base shadow-lg group-hover:shadow-xl transition-shadow relative overflow-hidden">
+                          <span className="relative z-10">{user.name.charAt(0).toUpperCase()}</span>
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                         </div>
-                        <span>Profil</span>
-                      </Button>
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
+                            {user.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {user.role === 'ADMIN' ? 'Yönetici' : 'Oyuncu'}
+                          </span>
+                        </div>
+                        <svg 
+                          className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
-                          {user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.email}</div>
+                    <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-2 border-gray-100 rounded-xl">
+                      <DropdownMenuLabel className="px-3 py-3 mb-2">
+                        <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 truncate">{user.name}</div>
+                            <div className="text-xs text-gray-600 truncate">{user.email}</div>
+                            <div className="text-xs text-green-600 font-medium mt-1">
+                              {user.role === 'ADMIN' ? '👑 Yönetici' : '⚽ Oyuncu'}
+                            </div>
+                          </div>
                         </div>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="my-2" />
                       <DropdownMenuItem asChild>
-                        <Link href="/profile" className={`flex items-center gap-2 cursor-pointer ${isActive('/profile') ? 'bg-green-50 text-green-600' : ''}`}>
-                          <User className="w-4 h-4" />
-                          Profil
+                        <Link href="/profile" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${isActive('/profile') ? 'bg-green-50 text-green-600 font-medium' : 'hover:bg-gray-50'}`}>
+                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                            <User className="w-4 h-4 text-green-600" />
+                          </div>
+                          <span>Profil</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/dashboard" className={`flex items-center gap-2 cursor-pointer ${isActive('/dashboard') ? 'bg-green-50 text-green-600' : ''}`}>
-                          <LayoutDashboard className="w-4 h-4" />
-                          Organizasyonlarım
+                        <Link href="/dashboard" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${isActive('/dashboard') ? 'bg-green-50 text-green-600 font-medium' : 'hover:bg-gray-50'}`}>
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <span>Organizasyonlarım</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50">
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Çıkış Yap
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600 focus:bg-red-50 transition-all">
+                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                          <LogOut className="w-4 h-4 text-red-600" />
+                        </div>
+                        <span className="font-medium">Çıkış Yap</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
