@@ -325,8 +325,13 @@ export default function ProfilePage() {
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
     if (!user) return 0
-    const optionalFields = ['phone', 'position', 'strongFoot', 'height', 'weight', 'age']
-    const filledFields = optionalFields.filter(field => user[field] !== null && user[field] !== undefined && user[field] !== '')
+    const optionalFields = ['avatarUrl', 'phone', 'position', 'strongFoot', 'height', 'weight', 'age']
+    const filledFields = optionalFields.filter(field => {
+      if (field === 'avatarUrl') {
+        return user[field] !== null && user[field] !== undefined && user[field] !== ''
+      }
+      return user[field] !== null && user[field] !== undefined && user[field] !== ''
+    })
     return Math.round((filledFields.length / optionalFields.length) * 100)
   }
 
