@@ -45,6 +45,7 @@ model User {
   email         String    @unique
   password      String
   name          String
+  avatarUrl     String?   // Profil fotoğrafı URL'i
   phone         String?
   position      String?   // Tercih edilen mevki: KALECI, DEFANS, ORTASAHA, FORVET
   strongFoot    String?   // Güçlü ayak: SOL, SAĞ, İKİSİ

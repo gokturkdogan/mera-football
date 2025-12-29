@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 const updateProfileSchema = z.object({
   name: z.string().min(2),
+  avatarUrl: z.string().url().optional().nullable(), // Cloudinary URL
   phone: z.string().optional(),
   position: z.enum(['KALECI', 'DEFANS', 'ORTASAHA', 'FORVET']).optional().nullable(),
   strongFoot: z.enum(['SOL', 'SAĞ', 'İKİSİ']).optional().nullable(),
@@ -47,6 +48,7 @@ export async function PATCH(request: NextRequest) {
       where: { id: payload.userId },
       data: {
         name: validatedData.name,
+        avatarUrl: validatedData.avatarUrl ?? null,
         phone: validatedData.phone,
         position: validatedData.position ?? null,
         strongFoot: validatedData.strongFoot ?? null,
@@ -64,6 +66,7 @@ export async function PATCH(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        avatarUrl: true,
         phone: true,
         position: true,
         strongFoot: true,

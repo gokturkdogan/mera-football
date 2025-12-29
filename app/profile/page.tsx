@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
+import Cropper from 'react-easy-crop'
+import 'react-easy-crop/react-easy-crop.css'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -9,6 +11,15 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Navbar from '@/components/Navbar'
 import { useToast } from '@/components/ui/toast'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { 
   User, 
   Shield, 
@@ -33,7 +44,10 @@ import {
   CheckCircle,
   ArrowLeft,
   ArrowRight,
-  Move
+  Move,
+  Plus,
+  Upload,
+  Loader2
 } from 'lucide-react'
 
 interface Organization {
@@ -54,6 +68,7 @@ export default function ProfilePage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [formData, setFormData] = useState({
     name: '',
+    avatarUrl: '' as string | null,
     phone: '',
     position: '' as string | null,
     strongFoot: '' as string | null,
@@ -70,6 +85,15 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [deletingAvatar, setDeletingAvatar] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const profileInfoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -88,6 +112,7 @@ export default function ProfilePage() {
       setUser(data.user)
       setFormData({
         name: data.user.name || '',
+        avatarUrl: data.user.avatarUrl || null,
         phone: data.user.phone || '',
         position: data.user.position || null,
         strongFoot: data.user.strongFoot || null,
@@ -149,6 +174,140 @@ export default function ProfilePage() {
     }
   }
 
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }, [])
+
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image()
+      image.addEventListener('load', () => resolve(image))
+      image.addEventListener('error', error => reject(error))
+      image.src = url
+    })
+
+  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
+    const image = await createImage(imageSrc)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) {
+      throw new Error('No 2d context')
+    }
+
+    // Round crop için boyutları ayarla
+    const size = Math.min(pixelCrop.width, pixelCrop.height)
+    canvas.width = size
+    canvas.height = size
+
+    // Yuvarlak mask oluştur
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI)
+    ctx.clip()
+
+    // Görseli çiz
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      size,
+      size
+    )
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob)
+        } else {
+          reject(new Error('Canvas to blob conversion failed'))
+        }
+      }, 'image/jpeg', 0.95)
+    })
+  }
+
+  const handleCropComplete = async () => {
+    if (!imageSrc || !croppedAreaPixels || !selectedFile || uploadingAvatar) return
+
+    setUploadingAvatar(true)
+    try {
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels)
+      const file = new File([croppedImage], selectedFile.name, { type: 'image/jpeg' })
+
+      // Cloudinary'e yükle
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+
+      const uploadRes = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        credentials: 'include',
+        body: uploadFormData,
+      })
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json()
+        showToast(errorData.error || 'Görsel yüklenirken bir hata oluştu', 'error')
+        setUploadingAvatar(false)
+        return
+      }
+
+      const { url } = await uploadRes.json()
+
+      // Form data'yı güncelle
+      setFormData({ ...formData, avatarUrl: url })
+      // User state'i güncelle (preview için)
+      setUser({ ...user, avatarUrl: url })
+      
+      // API'ye kaydet
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ...formData, avatarUrl: url }),
+      })
+      
+      if (res.ok) {
+        showToast('Profil fotoğrafı güncellendi', 'success')
+        fetchUser()
+        setShowCropModal(false)
+        setImageSrc(null)
+        setSelectedFile(null)
+        setShowAvatarModal(false)
+      } else {
+        showToast('Profil fotoğrafı güncellenirken bir hata oluştu', 'error')
+      }
+    } catch (error) {
+      showToast('Bir hata oluştu. Lütfen tekrar deneyin.', 'error')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleFileSelect = (file: File) => {
+    // Dosya formatı kontrolü
+    if (!file.type.startsWith('image/')) {
+      showToast('Lütfen geçerli bir görsel dosyası seçin', 'error')
+      return
+    }
+    
+    // Dosya boyutu kontrolü (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Dosya boyutu 5MB\'dan küçük olmalıdır', 'error')
+      return
+    }
+
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setImageSrc(reader.result as string)
+      setShowCropModal(true)
+    })
+    reader.readAsDataURL(file)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
@@ -189,12 +348,54 @@ export default function ProfilePage() {
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-16">
         <div className="container mx-auto px-4">
           <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl">
-              {isAdmin ? (
-                <Crown className="w-12 h-12 text-white" />
-              ) : (
-                <Trophy className="w-12 h-12 text-white" />
-              )}
+            {/* Avatar */}
+            <div className="relative group">
+              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl overflow-hidden">
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-4xl font-black text-white">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                )}
+              </div>
+              {/* Hover Overlay */}
+              <div 
+                className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={() => {
+                  if (user?.avatarUrl) {
+                    // Görsel varsa modal aç
+                    setShowAvatarModal(true)
+                  } else {
+                    // Görsel yoksa direkt file input'u aç
+                    document.getElementById('avatar-upload-direct')?.click()
+                  }
+                }}
+              >
+                {user?.avatarUrl ? (
+                  <Edit className="w-8 h-8 text-white" />
+                ) : (
+                  <Plus className="w-8 h-8 text-white" />
+                )}
+              </div>
+              
+              {/* Direct Upload Input (görsel yoksa kullanılır) */}
+              <input
+                type="file"
+                accept="image/*"
+                id="avatar-upload-direct"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    handleFileSelect(file)
+                  }
+                }}
+              />
             </div>
             <div className="flex-1">
               <h1 className="text-4xl font-black mb-2">{user?.name}</h1>
@@ -202,6 +403,233 @@ export default function ProfilePage() {
                 <Mail className="w-5 h-5" />
                 {user?.email}
               </p>
+              
+              {/* Avatar Modal */}
+              <Dialog 
+                open={showAvatarModal} 
+                onOpenChange={(open) => {
+                  // Loader aktifken modal'ı kapatma
+                  if (!open && deletingAvatar) return
+                  setShowAvatarModal(open)
+                }}
+                disabled={deletingAvatar}
+              >
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Profil Fotoğrafı Düzenle</DialogTitle>
+                    <DialogDescription>
+                      Profil fotoğrafınızı değiştirebilir veya kaldırabilirsiniz
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogBody className="space-y-4">
+                    {/* Mevcut Görsel */}
+                    {user?.avatarUrl && (
+                      <div className="flex justify-center">
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200">
+                          <img 
+                            src={user.avatarUrl} 
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Seçenekler */}
+                    <div className="space-y-3">
+                      {user?.avatarUrl ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            className="w-full border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                            onClick={async () => {
+                              setDeletingAvatar(true)
+                              try {
+                                const res = await fetch('/api/upload/avatar/delete', {
+                                  method: 'DELETE',
+                                  credentials: 'include',
+                                })
+                                
+                                if (res.ok) {
+                                  showToast('Profil fotoğrafı kaldırıldı', 'success')
+                                  fetchUser()
+                                  setShowAvatarModal(false)
+                                } else {
+                                  const errorData = await res.json()
+                                  showToast(errorData.error || 'Görsel kaldırılırken bir hata oluştu', 'error')
+                                }
+                              } catch (error) {
+                                showToast('Bir hata oluştu. Lütfen tekrar deneyin.', 'error')
+                              } finally {
+                                setDeletingAvatar(false)
+                              }
+                            }}
+                            disabled={deletingAvatar}
+                          >
+                            {deletingAvatar ? (
+                              <>
+                                <Circle className="w-4 h-4 animate-spin mr-2" />
+                                Kaldırılıyor...
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-4 h-4 mr-2" />
+                                Görseli Kaldır
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => {
+                              // File input'u tetikle (modal kapanmadan önce)
+                              document.getElementById('avatar-upload-modal')?.click()
+                            }}
+                            disabled={deletingAvatar}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Yeni Görsel Ekle
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => {
+                            // File input'u tetikle (modal kapanmadan önce)
+                            document.getElementById('avatar-upload-modal')?.click()
+                          }}
+                          disabled={deletingAvatar}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Görsel Ekle
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Hidden File Input */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="avatar-upload-modal"
+                      className="hidden"
+                      disabled={deletingAvatar}
+                      onChange={(e) => {
+                        if (deletingAvatar) return
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          // Modal'ı kapat ve crop modal'ını aç
+                          setShowAvatarModal(false)
+                          handleFileSelect(file)
+                        }
+                        // Input'u sıfırla (aynı dosyayı tekrar seçebilmek için)
+                        e.target.value = ''
+                      }}
+                    />
+                  </DialogBody>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setShowAvatarModal(false)}
+                      disabled={deletingAvatar}
+                    >
+                      İptal
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              {/* Crop Modal */}
+              <Dialog 
+                open={showCropModal} 
+                onOpenChange={(open) => {
+                  // Loader aktifken modal'ı kapatma
+                  if (!open && uploadingAvatar) return
+                  setShowCropModal(open)
+                }}
+                disabled={uploadingAvatar}
+              >
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Profil Fotoğrafını Kırp</DialogTitle>
+                    <DialogDescription>
+                      Görseli istediğiniz şekilde kırpın ve onaylayın
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogBody className="space-y-4">
+                    {imageSrc && (
+                      <div className="relative w-full h-[400px] bg-black rounded-lg overflow-hidden">
+                        <Cropper
+                          image={imageSrc}
+                          crop={crop}
+                          zoom={zoom}
+                          aspect={1}
+                          onCropChange={uploadingAvatar ? undefined : setCrop}
+                          onZoomChange={uploadingAvatar ? undefined : setZoom}
+                          onCropComplete={onCropComplete}
+                          cropShape="round"
+                          showGrid={false}
+                          disabled={uploadingAvatar}
+                        />
+                        {uploadingAvatar && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                            <div className="text-center">
+                              <Loader2 className="w-8 h-8 text-white animate-spin mx-auto mb-2" />
+                              <p className="text-white text-sm">Yükleniyor...</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Zoom Control */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Yakınlaştır</Label>
+                      <input
+                        type="range"
+                        value={zoom}
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        onChange={(e) => setZoom(Number(e.target.value))}
+                        disabled={uploadingAvatar}
+                        className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </DialogBody>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        setShowCropModal(false)
+                        setImageSrc(null)
+                        setSelectedFile(null)
+                      }}
+                      disabled={uploadingAvatar}
+                    >
+                      İptal
+                    </Button>
+                    <Button
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleCropComplete}
+                      disabled={uploadingAvatar}
+                    >
+                      {uploadingAvatar ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Yükleniyor...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Onayla ve Yükle
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
               <div className="flex items-center gap-4 flex-wrap">
                 <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
                   isAdmin 
@@ -864,6 +1292,7 @@ export default function ProfilePage() {
                         if (user) {
                           setFormData({
                             name: user.name || '',
+                            avatarUrl: user.avatarUrl || null,
                             phone: user.phone || '',
                             position: user.position || null,
                             strongFoot: user.strongFoot || null,

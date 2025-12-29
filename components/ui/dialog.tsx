@@ -30,12 +30,14 @@ interface DialogDescriptionProps {
 const DialogContext = React.createContext<{
   open: boolean
   onOpenChange: (open: boolean) => void
+  disabled?: boolean
 }>({
   open: false,
   onOpenChange: () => {},
+  disabled: false,
 })
 
-export function Dialog({ open, onOpenChange, children }: DialogProps) {
+export function Dialog({ open, onOpenChange, children, disabled = false }: DialogProps) {
   React.useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -50,11 +52,15 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null
 
   return (
-    <DialogContext.Provider value={{ open, onOpenChange }}>
+    <DialogContext.Provider value={{ open, onOpenChange, disabled }}>
       <div className="fixed inset-0 z-[100] flex items-center justify-center">
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => onOpenChange(false)}
+          onClick={() => {
+            if (!disabled) {
+              onOpenChange(false)
+            }
+          }}
         />
         {children}
       </div>
@@ -63,7 +69,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 }
 
 export function DialogContent({ children, className = '' }: DialogContentProps) {
-  const { onOpenChange } = React.useContext(DialogContext)
+  const { onOpenChange, disabled } = React.useContext(DialogContext)
 
   return (
     <div
@@ -73,8 +79,13 @@ export function DialogContent({ children, className = '' }: DialogContentProps) 
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10 h-8 w-8 rounded-full hover:bg-gray-100"
-        onClick={() => onOpenChange(false)}
+        className="absolute top-4 right-4 z-10 h-8 w-8 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={() => {
+          if (!disabled) {
+            onOpenChange(false)
+          }
+        }}
+        disabled={disabled}
       >
         <X className="w-4 h-4" />
       </Button>
