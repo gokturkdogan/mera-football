@@ -9,19 +9,26 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Navbar from '@/components/Navbar'
 import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react'
+import { useToast } from '@/components/ui/toast'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
+
+    // Validation
+    if (!email || !password) {
+      showToast('Lütfen email ve şifre alanlarını doldurun', 'warning')
+      setLoading(false)
+      return
+    }
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -34,16 +41,32 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Giriş başarısız')
+        // Türkçe hata mesajları
+        let errorMessage = 'Giriş başarısız'
+        if (data.error) {
+          if (data.error.includes('Invalid') || data.error.includes('credentials')) {
+            errorMessage = 'Hatalı kullanıcı adı veya şifre'
+          } else if (data.error.includes('not found') || data.error.includes('User')) {
+            errorMessage = 'Bu email adresi ile kayıtlı kullanıcı bulunamadı'
+          } else {
+            errorMessage = data.error
+          }
+        }
+        showToast(errorMessage, 'error')
         setLoading(false)
         return
       }
 
-      // Success - redirect to home page
-      // Use window.location for full page reload to ensure cookie is read
-      window.location.href = '/'
+      // Success
+      showToast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
+      
+      // Wait a bit for toast to show, then redirect
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 500)
     } catch (err) {
-      setError('Bir hata oluştu')
+      const errorMessage = 'Bir hata oluştu. Lütfen tekrar deneyin.'
+      showToast(errorMessage, 'error')
       setLoading(false)
     }
   }
@@ -109,12 +132,6 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-
-              {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
-                  {error}
-                </div>
-              )}
 
               <Button 
                 type="submit" 

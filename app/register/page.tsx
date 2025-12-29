@@ -8,7 +8,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Navbar from '@/components/Navbar'
-import { User, Shield, Eye, EyeOff } from 'lucide-react'
+import { User, Shield, Eye, EyeOff, FileText } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from '@/components/ui/dialog'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -22,6 +31,8 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   useEffect(() => {
     const role = searchParams?.get('role')
@@ -33,6 +44,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    if (!agreedToTerms) {
+      setError('Üyelik sözleşmesini kabul etmelisiniz')
+      return
+    }
+    
     setLoading(true)
 
     try {
@@ -218,6 +235,52 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Terms and Conditions Checkbox */}
+              <div className="mt-6 flex items-center justify-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label htmlFor="terms" className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="sr-only"
+                      required
+                    />
+                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 transform ${
+                      agreedToTerms
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-600 border-green-600 shadow-lg scale-100'
+                        : 'bg-white border-gray-300 group-hover:border-green-400 group-hover:bg-green-50 scale-100'
+                    }`}>
+                      {agreedToTerms && (
+                        <svg
+                          className="w-4 h-4 text-white animate-in fade-in duration-200"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="3"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-green-600 hover:text-green-700 font-semibold underline inline-flex items-center gap-1 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Üyelik Sözleşmesi
+                    </button>
+                    <span>'ni okudum ve kabul ediyorum.</span>
+                  </span>
+                </label>
+              </div>
+
               {/* Submit Button and Links - Centered */}
               <div className="mt-6 space-y-4">
                 <Button 
@@ -246,6 +309,149 @@ export default function RegisterPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Üyelik Sözleşmesi</DialogTitle>
+            <DialogDescription>
+              Lütfen aşağıdaki sözleşmeyi dikkatlice okuyun
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="max-h-[60vh]">
+            <div className="prose prose-sm max-w-none text-gray-700 space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900">MeraFootball Üyelik Sözleşmesi ve Kişisel Verilerin Kullanımı Hakkında Aydınlatma Metni</h3>
+                <p className="text-gray-600">
+                  MeraFootball platformuna üye olarak, aşağıda belirtilen şartları okuduğunuzu, anladığınızı ve kabul ettiğinizi beyan etmiş olursunuz.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">1. Üyelik ve Platformun Amacı</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  MeraFootball; halısaha futbol organizasyonları düzenleyen yöneticiler ile bu organizasyonlara katılmak isteyen oyuncuları bir araya getiren, web tabanlı bir organizasyon ve iletişim platformudur. Platformun temel amacı; oyuncuların ve yöneticilerin birbirlerini tanıyabilmesi, organizasyonlara katılım sağlayabilmesi ve sağlıklı bir kullanıcı deneyimi sunulmasıdır.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">2. Kayıt Sırasında Paylaşılan Kişisel Veriler</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Üyelik sırasında kullanıcıdan talep edilen ad, soyad, e-posta adresi, kullanıcı adı gibi kişisel bilgiler;
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Kullanıcı hesabının oluşturulması,</li>
+                  <li>Oyuncu ve yöneticilerin birbirini tanıyabilmesi,</li>
+                  <li>Organizasyon, maç ve kadro listelerinde kullanıcıların doğru şekilde gösterilmesi</li>
+                </ul>
+                <p className="text-gray-600 leading-relaxed mt-3">
+                  amaçlarıyla işlenmekte ve platform içerisinde görüntülenmektedir.
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  Bu bilgiler; organizasyon listeleme sayfalarında, maç kadrolarında ve ilgili kullanıcı profillerinde, platformun işleyişi gereği diğer kullanıcılar tarafından görülebilir.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">3. Profil Sonrasında Eklenen Kişisel Veriler</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Kullanıcılar, üyelik sonrası profil sayfaları üzerinden telefon numarası gibi ek kişisel bilgiler ekleyebilirler.
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  Bu tür bilgiler:
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Üyelik sırasında zorunlu değildir,</li>
+                  <li>Kullanıcının kendi iradesiyle eklenir.</li>
+                </ul>
+                <p className="text-gray-600 leading-relaxed mt-3">
+                  Telefon numarası ve benzeri hassas bilgiler için kullanıcıya "göster / gizle" seçenekleri sunulur ve bu bilgilerin diğer kullanıcılar tarafından görüntülenip görüntülenmeyeceği tamamen kullanıcının tercihine bırakılır.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">4. Verilerin Gizlenmesi ve Kullanıcı Deneyimi</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Kullanıcı tarafından gizlenen bilgiler, platform üzerinde diğer kullanıcılar tarafından görüntülenmez.
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  Ancak kullanıcı, bazı kişisel verileri gizlemenin;
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Organizasyon yöneticilerinin kendisine ulaşmasını,</li>
+                  <li>Organizasyonlara davet edilmesini,</li>
+                  <li>Platform içi iletişimi</li>
+                </ul>
+                <p className="text-gray-600 leading-relaxed mt-3">
+                  zorlaştırabileceğini kabul eder. Bu durumun, kullanıcı deneyimini olumsuz etkileyebileceği kullanıcıya açıkça bildirilmiştir.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">5. Kişisel Verilerin İşlenmesi ve Görüntülenmesi</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Kişisel veriler;
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Platformun teknik işleyişinin sağlanması,</li>
+                  <li>Oyuncu ve yöneticilerin eşleştirilmesi,</li>
+                  <li>Organizasyon ve maç yönetiminin yapılabilmesi</li>
+                </ul>
+                <p className="text-gray-600 leading-relaxed mt-3">
+                  amaçlarıyla sınırlı olarak işlenir.
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  MeraFootball, kişisel verileri üçüncü kişilerle paylaşmaz; yalnızca platformun işlevselliği kapsamında ve kullanıcıların açık rızası doğrultusunda görüntülenmesini sağlar.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">6. Kullanıcının Hakları</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Kullanıcı;
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Profilindeki bilgileri dilediği zaman güncelleyebilir,</li>
+                  <li>Gösterilen veya gizlenen alanlar üzerindeki tercihlerini değiştirebilir,</li>
+                  <li>Hesabını silme talebinde bulunabilir.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-gray-900">7. Kabul ve Yürürlük</h4>
+                <p className="text-gray-600 leading-relaxed">
+                  Kullanıcı, MeraFootball platformuna üye olarak;
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>Bu metinde yer alan tüm koşulları,</li>
+                  <li>Kişisel verilerinin belirtilen şekilde işlenmesini ve görüntülenmesini</li>
+                </ul>
+                <p className="text-gray-600 leading-relaxed mt-3">
+                  kabul etmiş sayılır.
+                </p>
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTermsModal(false)}
+            >
+              Kapat
+            </Button>
+            <Button
+              onClick={() => {
+                setAgreedToTerms(true)
+                setShowTermsModal(false)
+              }}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            >
+              Kabul Ediyorum
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
