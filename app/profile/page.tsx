@@ -1269,6 +1269,21 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
+                  {/* Privacy Notice */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      <span className="font-semibold text-blue-900">Bilgilendirme:</span> "Listelemede göster" seçeneği işaretli olan tüm alanlar üyelerimiz ile listeleme ekranlarında paylaşılacaktır. Detaylar için{' '}
+                      <Link 
+                        href="/terms" 
+                        className="text-blue-600 hover:text-blue-800 underline font-medium"
+                        target="_blank"
+                      >
+                        kullanıcı sözleşmesi
+                      </Link>
+                      {' '}sayfasını inceleyebilirsiniz.
+                    </p>
+                  </div>
+
                   {/* Form Actions */}
                   <div className="flex gap-3 pt-4 border-t border-gray-200">
                     <Button

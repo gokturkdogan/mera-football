@@ -153,8 +153,18 @@ export default function Navbar() {
                     <DropdownMenuTrigger asChild>
                       <button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-green-50 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-base shadow-lg group-hover:shadow-xl transition-shadow relative overflow-hidden">
-                          <span className="relative z-10">{user.name.charAt(0).toUpperCase()}</span>
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                          {user.avatarUrl ? (
+                            <img 
+                              src={user.avatarUrl} 
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <>
+                              <span className="relative z-10">{user.name.charAt(0).toUpperCase()}</span>
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                            </>
+                          )}
                         </div>
                         <div className="flex flex-col items-start">
                           <span className="text-sm font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
@@ -177,8 +187,16 @@ export default function Navbar() {
                     <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-2 border-gray-100 rounded-xl">
                       <DropdownMenuLabel className="px-3 py-3 mb-2">
                         <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                            {user.name.charAt(0).toUpperCase()}
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md overflow-hidden">
+                            {user.avatarUrl ? (
+                              <img 
+                                src={user.avatarUrl} 
+                                alt={user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              user.name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-gray-900 truncate">{user.name}</div>
@@ -309,8 +327,16 @@ export default function Navbar() {
                 {/* User Info */}
                 <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
-                      {user.name.charAt(0).toUpperCase()}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                      {user.avatarUrl ? (
+                        <img 
+                          src={user.avatarUrl} 
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        user.name.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div>
                       <div className="font-semibold text-gray-900">{user.name}</div>
