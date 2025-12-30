@@ -21,7 +21,10 @@ import {
   Search,
   Eye,
   EyeOff,
-  ArrowRight
+  ArrowRight,
+  Filter,
+  Shield,
+  X
 } from 'lucide-react'
 
 interface Player {
@@ -54,25 +57,33 @@ export default function PlayersPage() {
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeFilter, setActiveFilter] = useState<string>('all')
 
   useEffect(() => {
     fetchPlayers()
   }, [])
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredPlayers(players)
-    } else {
-      const filtered = players.filter(
+    let filtered = players
+
+    // Apply position filter
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(player => player.position === activeFilter)
+    }
+
+    // Apply search term
+    if (searchTerm.trim() !== '') {
+      filtered = filtered.filter(
         (player) =>
           player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           player.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (player.phone && player.phone.includes(searchTerm)) ||
           (player.position && player.position.toLowerCase().includes(searchTerm.toLowerCase()))
       )
-      setFilteredPlayers(filtered)
     }
-  }, [searchTerm, players])
+
+    setFilteredPlayers(filtered)
+  }, [searchTerm, players, activeFilter])
 
   const fetchPlayers = async () => {
     try {
@@ -155,30 +166,130 @@ export default function PlayersPage() {
         {/* Players Table */}
         <Card className="border-2 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-green-600" />
-              Oyuncu Listesi
-            </CardTitle>
-            <CardDescription>
-              {searchTerm 
-                ? `${filteredPlayers.length} oyuncu bulundu`
-                : `Toplam ${players.length} oyuncu`}
-            </CardDescription>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-green-600" />
+                  Oyuncu Listesi
+                </CardTitle>
+                <CardDescription>
+                  {searchTerm 
+                    ? `${filteredPlayers.length} oyuncu bulundu`
+                    : `Toplam ${players.length} oyuncu`}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={activeFilter === 'all' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveFilter('all')}
+                    className={`h-8 px-3 text-xs ${
+                      activeFilter === 'all' 
+                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Tümü
+                  </Button>
+                  <Button
+                    variant={activeFilter === 'KALECI' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveFilter('KALECI')}
+                    className={`h-8 px-3 text-xs flex items-center gap-1 ${
+                      activeFilter === 'KALECI' 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Shield className="w-3 h-3" />
+                    Kaleci
+                  </Button>
+                  <Button
+                    variant={activeFilter === 'DEFANS' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveFilter('DEFANS')}
+                    className={`h-8 px-3 text-xs flex items-center gap-1 ${
+                      activeFilter === 'DEFANS' 
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Shield className="w-3 h-3" />
+                    Defans
+                  </Button>
+                  <Button
+                    variant={activeFilter === 'ORTASAHA' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveFilter('ORTASAHA')}
+                    className={`h-8 px-3 text-xs flex items-center gap-1 ${
+                      activeFilter === 'ORTASAHA' 
+                        ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Users className="w-3 h-3" />
+                    Ortasaha
+                  </Button>
+                  <Button
+                    variant={activeFilter === 'FORVET' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveFilter('FORVET')}
+                    className={`h-8 px-3 text-xs flex items-center gap-1 ${
+                      activeFilter === 'FORVET' 
+                        ? 'bg-red-600 hover:bg-red-700 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Target className="w-3 h-3" />
+                    Forvet
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {filteredPlayers.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-10 h-10 text-gray-400" />
+              <div className="text-center py-16 px-4">
+                <div className="relative inline-block mb-6">
+                  <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto shadow-lg relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-400/20 to-emerald-400/20 animate-pulse"></div>
+                    <Search className="w-16 h-16 text-gray-400 relative z-10" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full animate-ping"></div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full"></div>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  {searchTerm ? 'Oyuncu bulunamadı' : 'Henüz oyuncu yok'}
-                </h3>
-                <p className="text-gray-600">
-                  {searchTerm
-                    ? 'Arama kriterlerinize uygun oyuncu bulunamadı. Farklı bir arama terimi deneyin.'
-                    : 'Sistemde henüz kayıtlı oyuncu bulunmuyor.'}
-                </p>
+                <div className="space-y-3">
+                  <h3 className="text-3xl font-black text-gray-900 mb-2 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                    {searchTerm 
+                      ? 'Oyuncu bulunamadı' 
+                      : activeFilter !== 'all' 
+                        ? 'Seçtiğiniz mevkide oyuncu yok'
+                        : 'Henüz oyuncu yok'}
+                  </h3>
+                  <div className="max-w-md mx-auto">
+                    <p className="text-gray-600 text-lg leading-relaxed">
+                      {searchTerm
+                        ? 'Arama kriterlerinize uygun oyuncu bulunamadı. Farklı bir arama terimi deneyin.'
+                        : activeFilter !== 'all'
+                          ? `Sistemde ${activeFilter === 'KALECI' ? 'Kaleci' : activeFilter === 'DEFANS' ? 'Defans' : activeFilter === 'ORTASAHA' ? 'Ortasaha' : 'Forvet'} mevkiinde kayıtlı oyuncu bulunmuyor.`
+                          : 'Sistemde henüz kayıtlı oyuncu bulunmuyor.'}
+                    </p>
+                  </div>
+                  {activeFilter !== 'all' && (
+                    <div className="mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveFilter('all')}
+                        className="border-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Filtreyi Kaldır
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
