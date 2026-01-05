@@ -97,3 +97,62 @@ export async function GET(
   }
 }
 
+// DELETE - Delete organization (owner only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const token = request.cookies.get('token')?.value
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const payload = verifyToken(token)
+
+    if (!payload || payload.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only admins can delete organizations' },
+        { status: 403 }
+      )
+    }
+
+    // Check if organization exists
+    const organization = await prisma.organization.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'Organization not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if user is the owner
+    if (organization.ownerId !== payload.userId) {
+      return NextResponse.json(
+        { error: 'Only organization owner can delete the organization' },
+        { status: 403 }
+      )
+    }
+
+    // Delete organization (cascade will handle related records)
+    await prisma.organization.delete({
+      where: { id: params.id },
+    })
+
+    return NextResponse.json({ message: 'Organization deleted successfully' })
+  } catch (error) {
+    console.error('Delete organization error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+

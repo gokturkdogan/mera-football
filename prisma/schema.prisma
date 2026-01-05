@@ -77,6 +77,7 @@ model Organization {
   id              String            @id @default(cuid())
   name            String
   description     String?
+  avatarUrl       String?           // Organizasyon logosu URL'i
   ownerId         String
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt

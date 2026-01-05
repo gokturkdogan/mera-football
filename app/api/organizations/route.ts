@@ -6,6 +6,7 @@ import { z } from 'zod'
 const createOrganizationSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
+  avatarUrl: z.string().url().optional().or(z.literal('')),
 })
 
 // GET - List organizations (for player: their organizations, for admin: all their organizations)
@@ -91,7 +92,27 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      return NextResponse.json({ organizations })
+      // Calculate unique members across all organizations
+      const allMembers = await prisma.organizationMember.findMany({
+        where: {
+          organizationId: {
+            in: organizations.map(org => org.id)
+          },
+          status: 'APPROVED',
+        },
+        select: {
+          userId: true,
+        },
+      })
+
+      // Get unique user IDs
+      const uniqueUserIds = new Set(allMembers.map(member => member.userId))
+      const uniqueMemberCount = uniqueUserIds.size
+
+      return NextResponse.json({ 
+        organizations,
+        uniqueMemberCount 
+      })
     }
   } catch (error) {
     console.error('Get organizations error:', error)
@@ -126,6 +147,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createOrganizationSchema.parse(body)
 
+    // Check organization limit (max 3 for all admins)
+    const existingOrganizations = await prisma.organization.count({
+      where: {
+        ownerId: payload.userId,
+      },
+    })
+
+    if (existingOrganizations >= 3) {
+      return NextResponse.json(
+        { error: 'Maksimum 3 organizasyon oluşturabilirsiniz' },
+        { status: 400 }
+      )
+    }
+
     // Get admin's plan
     const admin = await prisma.user.findUnique({
       where: { id: payload.userId },
@@ -138,6 +173,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         description: validatedData.description,
+        avatarUrl: validatedData.avatarUrl || null,
         ownerId: payload.userId,
       },
       include: {

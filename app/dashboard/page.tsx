@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
 import { 
   Trophy, 
@@ -22,7 +24,9 @@ import {
   ArrowRight,
   Sparkles,
   Loader2,
-  Target
+  Target,
+  Trash2,
+  X
 } from 'lucide-react'
 
 interface User {
@@ -37,6 +41,7 @@ interface Organization {
   id: string
   name: string
   description: string | null
+  avatarUrl: string | null
   owner: {
     plan: string
   }
@@ -47,9 +52,14 @@ interface Organization {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [uniqueMemberCount, setUniqueMemberCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchUser()
@@ -80,11 +90,47 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json()
         setOrganizations(data.organizations || [])
+        setUniqueMemberCount(data.uniqueMemberCount || 0)
       }
     } catch (error) {
       console.error('Error fetching organizations:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteClick = (org: Organization) => {
+    setOrganizationToDelete(org)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!organizationToDelete) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/organizations/${organizationToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || 'Organizasyon silinirken bir hata oluştu', 'error')
+        setDeleting(false)
+        return
+      }
+
+      // Remove from list
+      setOrganizations(organizations.filter(org => org.id !== organizationToDelete.id))
+      showToast('Organizasyon başarıyla silindi', 'success')
+      setDeleteModalOpen(false)
+      setOrganizationToDelete(null)
+    } catch (error) {
+      console.error('Error deleting organization:', error)
+      showToast('Bir hata oluştu. Lütfen tekrar deneyin.', 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -169,7 +215,9 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
-                  <p className="text-4xl font-black text-green-600">{organizations.length}</p>
+                  <p className="text-4xl font-black text-green-600">
+                    {organizations.length}/3
+                  </p>
                 </div>
                 <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                   <Trophy className="w-8 h-8 text-white" />
@@ -206,7 +254,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Toplam Üye</p>
                       <p className="text-4xl font-black text-blue-600">
-                        {organizations.reduce((sum, org) => sum + org._count.members, 0)}
+                        {uniqueMemberCount}
                       </p>
                     </div>
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
@@ -252,20 +300,20 @@ export default function DashboardPage() {
         </div>
 
         {/* Organizations Section */}
-        <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
               {isAdmin ? 'Organizasyonlarım' : 'Katıldığım Organizasyonlar'}
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600">
               {isAdmin 
                 ? 'Oluşturduğunuz organizasyonları yönetin ve yeni organizasyonlar oluşturun'
                 : 'Aktif olduğunuz organizasyonlar (Maksimum 2)'}
             </p>
           </div>
           {isAdmin && (
-            <Link href="/organization/new">
-              <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center gap-2">
+            <Link href="/organization/new" className="flex-shrink-0">
+              <Button className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4" />
                 Yeni Organizasyon
               </Button>
@@ -307,70 +355,186 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {organizations.map((org) => (
-              <Link key={org.id} href={`/organization/${org.id}`}>
-                <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all cursor-pointer bg-white h-full flex flex-col">
-                  <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-1">{org.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {org.description || 'Açıklama yok'}
-                        </CardDescription>
-                      </div>
-                      {isAdmin && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ml-2 flex items-center gap-1 ${
-                          org.owner.plan === 'PREMIUM'
-                            ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
-                            : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
-                        }`}>
-                          {org.owner.plan === 'PREMIUM' ? (
-                            <>
-                              <Star className="w-3 h-3 fill-yellow-800" />
-                              Premium
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="w-3 h-3" />
-                              Free
-                            </>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-between">
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4 text-gray-500" />
-                        <span className="font-semibold">Üye Sayısı:</span>
-                        <span className="font-bold text-gray-900">{org._count.members}</span>
-                      </div>
-                      {isAdmin && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className={`font-semibold ${org.owner.plan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                            Plan:
-                          </span>
-                          <span className={`font-bold ${org.owner.plan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                            {org.owner.plan}
-                          </span>
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-green-600" />
+                Organizasyonlarınız
+              </CardTitle>
+              <CardDescription>
+                Oluşturduğunuz organizasyonları yönetin ve düzenleyin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {organizations.map((org) => (
+                  <Card key={org.id} className="border-2 hover:border-green-400 hover:shadow-xl transition-all bg-white h-full flex flex-col relative group">
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 z-10 h-8 w-8 p-0 bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-500 border border-gray-200 shadow-sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(org)
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Link href={`/organization/${org.id}`} className="flex-1 flex flex-col">
+                      <CardHeader>
+                        <div className="flex items-start gap-3 mb-2">
+                          {/* Avatar */}
+                          <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                            {org.avatarUrl ? (
+                              <img 
+                                src={org.avatarUrl} 
+                                alt={org.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Building2 className="w-8 h-8 text-green-600" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                <CardTitle className="text-xl mb-1">{org.name}</CardTitle>
+                                <CardDescription className="line-clamp-2">
+                                  {org.description || 'Açıklama yok'}
+                                </CardDescription>
+                              </div>
+                              {isAdmin && org.owner.plan === 'PREMIUM' && (
+                                <span className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 flex-shrink-0 bg-yellow-100 text-yellow-800 border-2 border-yellow-300">
+                                  <Star className="w-3 h-3 fill-yellow-800" />
+                                  Premium
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold flex items-center justify-center gap-2"
-                    >
-                      Detayları Gör
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col justify-between">
+                        <div className="space-y-3 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Users className="w-4 h-4 text-gray-500" />
+                            <span className="font-semibold">Üye Sayısı:</span>
+                            <span className="font-bold text-gray-900">{org._count.members}</span>
+                          </div>
+                          {isAdmin && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-semibold text-gray-600">Plan:</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                org.owner.plan === 'PREMIUM'
+                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                  : 'bg-gray-100 text-gray-800 border border-gray-300'
+                              }`}>
+                                {org.owner.plan === 'PREMIUM' ? (
+                                  <>
+                                    <Star className="w-3 h-3 fill-yellow-800" />
+                                    Premium
+                                  </>
+                                ) : (
+                                  <>
+                                    <FileText className="w-3 h-3" />
+                                    Free
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold flex items-center justify-center gap-2"
+                        >
+                          Detayları Gör
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      </CardContent>
+                    </Link>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <Dialog open={deleteModalOpen} onOpenChange={(open) => {
+          if (!deleting) {
+            setDeleteModalOpen(open)
+            if (!open) {
+              setOrganizationToDelete(null)
+            }
+          }
+        }}>
+          <DialogContent className="max-w-md border-2 border-red-200">
+            <DialogHeader>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                  <AlertTriangle className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
+                    Organizasyonu Sil
+                  </DialogTitle>
+                  <DialogDescription className="text-base text-gray-600">
+                    Bu işlem geri alınamaz
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            
+            <div className="py-4 px-6 space-y-4">
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 mb-2">
+                  <span className="font-semibold text-gray-900">{organizationToDelete?.name}</span> organizasyonunu silmek istediğinizden emin misiniz?
+                </p>
+                <div className="flex items-start gap-2 mt-3">
+                  <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700">
+                    Organizasyon ile birlikte tüm maçlar, üyeler ve veriler kalıcı olarak silinecektir.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-3 sm:gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteModalOpen(false)
+                  setOrganizationToDelete(null)
+                }}
+                disabled={deleting}
+                className="border-2 border-gray-300 hover:border-gray-400 flex-1 sm:flex-none"
+              >
+                <X className="w-4 h-4 mr-2" />
+                İptal
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-lg flex-1 sm:flex-none"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Siliniyor...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Sil
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Quick Actions for Admin */}
         {isAdmin && organizations.length > 0 && (
