@@ -66,19 +66,21 @@ export default function PlayersPage() {
   useEffect(() => {
     let filtered = players
 
-    // Apply position filter
+    // Apply position filter - sadece paylaşılan mevkiler arasında filtrele
     if (activeFilter !== 'all') {
-      filtered = filtered.filter(player => player.position === activeFilter)
+      filtered = filtered.filter(player => 
+        player.position === activeFilter && player.showPosition === true
+      )
     }
 
-    // Apply search term
+    // Apply search term - sadece paylaşılan bilgiler arasında ara
     if (searchTerm.trim() !== '') {
       filtered = filtered.filter(
         (player) =>
           player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           player.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (player.phone && player.phone.includes(searchTerm)) ||
-          (player.position && player.position.toLowerCase().includes(searchTerm.toLowerCase()))
+          (player.phone && player.showPhone && player.phone.includes(searchTerm)) ||
+          (player.position && player.showPosition && player.position.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 

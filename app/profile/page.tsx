@@ -352,62 +352,64 @@ export default function ProfilePage() {
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-16">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-6">
-            {/* Avatar */}
-            <div className="relative group">
-              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl overflow-hidden">
-                {user?.avatarUrl ? (
-                  <img 
-                    src={user.avatarUrl} 
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-4xl font-black text-white">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </span>
-                )}
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            {/* Left Side - Profile Info */}
+            <div className="flex items-center gap-6">
+              {/* Avatar */}
+              <div className="relative group">
+                <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl overflow-hidden">
+                  {user?.avatarUrl ? (
+                    <img 
+                      src={user.avatarUrl} 
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl font-black text-white">
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
+                {/* Hover Overlay */}
+                <div 
+                  className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => {
+                    if (user?.avatarUrl) {
+                      // Görsel varsa modal aç
+                      setShowAvatarModal(true)
+                    } else {
+                      // Görsel yoksa direkt file input'u aç
+                      document.getElementById('avatar-upload-direct')?.click()
+                    }
+                  }}
+                >
+                  {user?.avatarUrl ? (
+                    <Edit className="w-8 h-8 text-white" />
+                  ) : (
+                    <Plus className="w-8 h-8 text-white" />
+                  )}
+                </div>
+                
+                {/* Direct Upload Input (görsel yoksa kullanılır) */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="avatar-upload-direct"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleFileSelect(file)
+                    }
+                  }}
+                />
               </div>
-              {/* Hover Overlay */}
-              <div 
-                className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => {
-                  if (user?.avatarUrl) {
-                    // Görsel varsa modal aç
-                    setShowAvatarModal(true)
-                  } else {
-                    // Görsel yoksa direkt file input'u aç
-                    document.getElementById('avatar-upload-direct')?.click()
-                  }
-                }}
-              >
-                {user?.avatarUrl ? (
-                  <Edit className="w-8 h-8 text-white" />
-                ) : (
-                  <Plus className="w-8 h-8 text-white" />
-                )}
-              </div>
-              
-              {/* Direct Upload Input (görsel yoksa kullanılır) */}
-              <input
-                type="file"
-                accept="image/*"
-                id="avatar-upload-direct"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    handleFileSelect(file)
-                  }
-                }}
-              />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-4xl font-black mb-2">{user?.name}</h1>
-              <p className="text-xl opacity-90 mb-3 flex items-center gap-2">
-                <Mail className="w-5 h-5" />
-                {user?.email}
-              </p>
+              <div className="flex-1">
+                <h1 className="text-4xl font-black mb-2">{user?.name}</h1>
+                <p className="text-xl opacity-90 mb-3 flex items-center gap-2">
+                  <Mail className="w-5 h-5" />
+                  {user?.email}
+                </p>
               
               {/* Avatar Modal */}
               <Dialog 
@@ -635,38 +637,141 @@ export default function ProfilePage() {
                 </DialogContent>
               </Dialog>
               
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
-                  isAdmin 
-                    ? 'bg-yellow-400 text-yellow-900' 
-                    : 'bg-blue-400 text-blue-900'
-                }`}>
-                  {isAdmin ? (
-                    <>
-                      <Crown className="w-4 h-4" />
-                      Yönetici
-                    </>
-                  ) : (
-                    <>
-                      <User className="w-4 h-4" />
-                      Oyuncu
-                    </>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
+                    isAdmin 
+                      ? 'bg-yellow-400 text-yellow-900' 
+                      : 'bg-blue-400 text-blue-900'
+                  }`}>
+                    {isAdmin ? (
+                      <>
+                        <Crown className="w-4 h-4" />
+                        Yönetici
+                      </>
+                    ) : (
+                      <>
+                        <User className="w-4 h-4" />
+                        Oyuncu
+                      </>
+                    )}
+                  </span>
+                  {user?.phone && (
+                    <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      {user.phone}
+                    </span>
                   )}
-                </span>
-                {user?.phone && (
-                  <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    {user.phone}
-                  </span>
-                )}
-                {user?.position && (
-                  <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
-                    <Target className="w-4 h-4" />
-                    {user.position}
-                  </span>
-                )}
+                  {user?.position && (
+                    <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      {user.position}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Right Side - Plan Status (only for admins) */}
+            {isAdmin && (
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl border-2 border-white/20 p-6 shadow-2xl">
+                <div className="relative">
+                  {/* Premium için animasyonlu arka plan */}
+                  {adminPlan === 'PREMIUM' && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-400/20 to-amber-400/20 rounded-2xl animate-pulse"></div>
+                  )}
+                  
+                  <div className="relative">
+                    <div className="flex items-center gap-4 mb-4">
+                      {/* Icon Container */}
+                      <div className="relative flex-shrink-0">
+                        <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-xl relative overflow-hidden ${
+                          adminPlan === 'PREMIUM' 
+                            ? 'bg-gradient-to-br from-yellow-500 via-orange-500 to-amber-600' 
+                            : 'bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600'
+                        }`}>
+                          {/* Shine effect for Premium */}
+                          {adminPlan === 'PREMIUM' && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                          )}
+                          {adminPlan === 'PREMIUM' ? (
+                            <Star className="w-8 h-8 text-white fill-white relative z-10 drop-shadow-lg" />
+                          ) : (
+                            <User className="w-8 h-8 text-white relative z-10 drop-shadow-lg" />
+                          )}
+                        </div>
+                        {/* Premium için ekstra glow efekti */}
+                        {adminPlan === 'PREMIUM' && (
+                          <div className="absolute -inset-1 bg-yellow-400/30 rounded-xl blur-lg animate-pulse"></div>
+                        )}
+                      </div>
+
+                      {/* Plan Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-white/80 uppercase tracking-wide">
+                            Plan Durumu
+                          </span>
+                          {adminPlan === 'PREMIUM' && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-300/30 rounded-full border border-yellow-300/50">
+                              <div className="w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-bold text-white">Aktif</span>
+                            </div>
+                          )}
+                        </div>
+                        <h3 className={`text-2xl font-black ${
+                          adminPlan === 'PREMIUM' 
+                            ? 'bg-gradient-to-r from-yellow-300 via-orange-300 to-amber-300 bg-clip-text text-transparent' 
+                            : 'text-white'
+                        }`}>
+                          {adminPlan === 'PREMIUM' ? 'Premium' : 'Ücretsiz'}
+                        </h3>
+                        <p className="text-sm text-white/80 mt-1">
+                          {adminPlan === 'PREMIUM' 
+                            ? 'Sınırsız organizasyon ve maç'
+                            : 'Sınırlı organizasyon ve maç'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Premium için özel özellikler listesi */}
+                    {adminPlan === 'PREMIUM' && (
+                      <div className="mt-4 pt-4 border-t border-white/20">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-300" />
+                            <span className="text-xs text-white/90 font-medium">Sınırsız Org.</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-300" />
+                            <span className="text-xs text-white/90 font-medium">Sınırsız Maç</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-300" />
+                            <span className="text-xs text-white/90 font-medium">Öncelikli Destek</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-300" />
+                            <span className="text-xs text-white/90 font-medium">Gelişmiş Özellikler</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Free plan için yükselt butonu */}
+                    {adminPlan === 'FREE' && (
+                      <div className="mt-4">
+                        <Link href="/plans">
+                          <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-2 border-white/30 backdrop-blur-sm transition-all">
+                            <Star className="w-4 h-4 mr-2" />
+                            Premium'a Yükselt
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -710,37 +815,6 @@ export default function ProfilePage() {
       )}
 
       <div className="container mx-auto px-4 py-8">
-        {/* Plan Status Card (only for admins) */}
-        {isAdmin && (
-          <div className="mb-8">
-            <Card className={`border-2 max-w-md mx-auto ${adminPlan === 'PREMIUM' ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'}`}>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="flex justify-center mb-3">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
-                      adminPlan === 'PREMIUM' 
-                        ? 'bg-gradient-to-br from-yellow-500 to-orange-600' 
-                        : 'bg-gradient-to-br from-gray-400 to-gray-600'
-                    }`}>
-                      {adminPlan === 'PREMIUM' ? (
-                        <Star className="w-8 h-8 text-white fill-white" />
-                      ) : (
-                        <User className="w-8 h-8 text-white" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-lg text-gray-700 font-semibold mb-1">
-                    Plan Durumu
-                  </div>
-                  <div className={`text-xl font-bold ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                    {adminPlan}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         <div className="grid md:grid-cols-2 gap-6">
           {/* Profile Info Card */}
           <Card ref={profileInfoRef} className="border-2 hover:shadow-xl transition-shadow">

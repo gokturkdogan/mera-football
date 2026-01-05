@@ -6,6 +6,24 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Navbar from '@/components/Navbar'
+import { 
+  Trophy, 
+  Star, 
+  Crown, 
+  Users, 
+  BarChart3, 
+  Zap, 
+  Plus, 
+  Gem, 
+  FileText, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Building2,
+  ArrowRight,
+  Sparkles,
+  Loader2,
+  Target
+} from 'lucide-react'
 
 interface User {
   id: string
@@ -74,8 +92,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Yükleniyor...</p>
+          <Loader2 className="w-16 h-16 text-green-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Yükleniyor...</p>
         </div>
       </div>
     )
@@ -99,8 +117,8 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl backdrop-blur-sm border-4 border-white/30">
-                ⚽
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl">
+                <Building2 className="w-10 h-10 text-white" />
               </div>
             </div>
           </div>
@@ -108,17 +126,53 @@ export default function DashboardPage() {
       </section>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Plan Info for Admin - Premium Upgrade */}
+        {isAdmin && adminPlan === 'FREE' && (
+          <Card className="mb-8 border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Gem className="w-5 h-5 text-yellow-600" />
+                    <h3 className="text-lg font-bold text-gray-900">Premium Plan'a Geçin</h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <span>Sınırsız maç</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <span>Sınırsız oyuncu</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <span>Öncelikli destek</span>
+                    </div>
+                  </div>
+                </div>
+                <Link href="/payment" className="flex-shrink-0">
+                  <Button className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold shadow-lg flex items-center gap-2 whitespace-nowrap">
+                    <Gem className="w-4 h-4" />
+                    Premium Satın Al - 99.99 ₺
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-lg transition-shadow">
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-lg transition-all hover:scale-105">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
                   <p className="text-4xl font-black text-green-600">{organizations.length}</p>
                 </div>
-                <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center text-3xl">
-                  🏆
+                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Trophy className="w-8 h-8 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -126,23 +180,27 @@ export default function DashboardPage() {
 
           {isAdmin && (
             <>
-              <Card className={`border-2 ${adminPlan === 'PREMIUM' ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'} hover:shadow-lg transition-shadow`}>
+              <Card className={`border-2 ${adminPlan === 'PREMIUM' ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'} hover:shadow-lg transition-all hover:scale-105`}>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Plan Durumu</p>
                       <p className={`text-2xl font-black ${adminPlan === 'PREMIUM' ? 'text-yellow-600' : 'text-gray-600'}`}>
-                        {adminPlan === 'PREMIUM' ? '⭐ Premium' : '🆓 Free'}
+                        {adminPlan === 'PREMIUM' ? 'Premium' : 'Free'}
                       </p>
                     </div>
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl ${adminPlan === 'PREMIUM' ? 'bg-yellow-200' : 'bg-gray-200'}`}>
-                      {adminPlan === 'PREMIUM' ? '💎' : '📋'}
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${adminPlan === 'PREMIUM' ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gradient-to-br from-gray-400 to-gray-600'}`}>
+                      {adminPlan === 'PREMIUM' ? (
+                        <Gem className="w-8 h-8 text-white" />
+                      ) : (
+                        <FileText className="w-8 h-8 text-white" />
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-lg transition-shadow">
+              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-lg transition-all hover:scale-105">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -151,8 +209,8 @@ export default function DashboardPage() {
                         {organizations.reduce((sum, org) => sum + org._count.members, 0)}
                       </p>
                     </div>
-                    <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center text-3xl">
-                      👥
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                      <Users className="w-8 h-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
@@ -162,29 +220,29 @@ export default function DashboardPage() {
 
           {!isAdmin && (
             <>
-              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-lg transition-shadow">
+              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-lg transition-all hover:scale-105">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Kalan Kontenjan</p>
                       <p className="text-4xl font-black text-blue-600">{2 - organizations.length}</p>
                     </div>
-                    <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center text-3xl">
-                      📊
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                      <BarChart3 className="w-8 h-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-lg transition-shadow">
+              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-lg transition-all hover:scale-105">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Oyuncu Planı</p>
                       <p className="text-2xl font-black text-purple-600">Ücretsiz</p>
                     </div>
-                    <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center text-3xl">
-                      ⚽
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                      <Users className="w-8 h-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
@@ -207,18 +265,21 @@ export default function DashboardPage() {
           </div>
           {isAdmin && (
             <Link href="/organization/new">
-              <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg">
-                + Yeni Organizasyon
+              <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Yeni Organizasyon
               </Button>
             </Link>
           )}
         </div>
 
         {organizations.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-300">
+          <Card className="border-2 border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-white">
             <CardContent className="pt-12 pb-12">
               <div className="text-center">
-                <div className="text-6xl mb-4">⚽</div>
+                <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Building2 className="w-12 h-12 text-white" />
+                </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {isAdmin ? 'Henüz organizasyon oluşturmadınız' : 'Henüz bir organizasyona katılmadınız'}
                 </h3>
@@ -229,13 +290,15 @@ export default function DashboardPage() {
                 </p>
                 {isAdmin ? (
                   <Link href="/organization/new">
-                    <Button size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                    <Button size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 flex items-center gap-2 mx-auto">
+                      <Plus className="w-5 h-5" />
                       İlk Organizasyonu Oluştur
                     </Button>
                   </Link>
                 ) : (
                   <Link href="/organizations">
-                    <Button size="lg" variant="outline">
+                    <Button size="lg" variant="outline" className="flex items-center gap-2 mx-auto">
+                      <Building2 className="w-5 h-5" />
                       Organizasyonları Keşfet
                     </Button>
                   </Link>
@@ -257,12 +320,22 @@ export default function DashboardPage() {
                         </CardDescription>
                       </div>
                       {isAdmin && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ml-2 ${
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ml-2 flex items-center gap-1 ${
                           org.owner.plan === 'PREMIUM'
                             ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
                             : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
                         }`}>
-                          {org.owner.plan === 'PREMIUM' ? '⭐ Premium' : '🆓 Free'}
+                          {org.owner.plan === 'PREMIUM' ? (
+                            <>
+                              <Star className="w-3 h-3 fill-yellow-800" />
+                              Premium
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-3 h-3" />
+                              Free
+                            </>
+                          )}
                         </span>
                       )}
                     </div>
@@ -270,7 +343,8 @@ export default function DashboardPage() {
                   <CardContent className="flex-1 flex flex-col justify-between">
                     <div className="space-y-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="font-semibold">👥 Üye Sayısı:</span>
+                        <Users className="w-4 h-4 text-gray-500" />
+                        <span className="font-semibold">Üye Sayısı:</span>
                         <span className="font-bold text-gray-900">{org._count.members}</span>
                       </div>
                       {isAdmin && (
@@ -286,9 +360,10 @@ export default function DashboardPage() {
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold"
+                      className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold flex items-center justify-center gap-2"
                     >
-                      Detayları Gör →
+                      Detayları Gör
+                      <ArrowRight className="w-4 h-4" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -299,10 +374,10 @@ export default function DashboardPage() {
 
         {/* Quick Actions for Admin */}
         {isAdmin && organizations.length > 0 && (
-          <Card className="mt-8 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+          <Card className="mt-8 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <span>⚡</span>
+                <Zap className="w-5 h-5 text-green-600" />
                 Hızlı İşlemler
               </CardTitle>
               <CardDescription>
@@ -312,22 +387,22 @@ export default function DashboardPage() {
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4">
                 <Link href="/organization/new">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-green-400">
-                    <span className="text-2xl">➕</span>
+                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-green-400 hover:bg-green-50 transition-all">
+                    <Plus className="w-6 h-6 text-green-600" />
                     <span className="font-semibold">Yeni Organizasyon</span>
                   </Button>
                 </Link>
                 {adminPlan === 'FREE' && (
                   <Link href="/payment">
-                    <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 border-yellow-400 hover:border-yellow-500 bg-yellow-50">
-                      <span className="text-2xl">💎</span>
+                    <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 border-yellow-400 hover:border-yellow-500 bg-yellow-50 hover:bg-yellow-100 transition-all">
+                      <Gem className="w-6 h-6 text-yellow-600" />
                       <span className="font-semibold">Premium Ol</span>
                     </Button>
                   </Link>
                 )}
                 <Link href="/plans">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-blue-400">
-                    <span className="text-2xl">📋</span>
+                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                    <FileText className="w-6 h-6 text-blue-600" />
                     <span className="font-semibold">Planları Görüntüle</span>
                   </Button>
                 </Link>
@@ -336,60 +411,46 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Plan Info for Admin */}
-        {isAdmin && adminPlan === 'FREE' && (
-          <Card className="mt-6 border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span>💎</span>
-                Premium Plan'a Geçin
-              </CardTitle>
-              <CardDescription>
-                Sınırsız özelliklerle organizasyonlarınızı yönetin
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Free Plan Sınırlamaları</h4>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span>⚠️</span>
-                      <span>Haftada maksimum 1 maç</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span>⚠️</span>
-                      <span>Maksimum 10 oyuncu</span>
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Premium Plan Avantajları</h4>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span>Sınırsız maç oluşturma</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span>Sınırsız oyuncu ekleme</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span>Öncelikli destek</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <Link href="/payment">
-                <Button className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold shadow-lg">
-                  Premium Plan Satın Al - 99.99 ₺
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 md:py-12 mt-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                  <Target className="w-6 h-6 text-white" />
+                </div>
+                <h4 className="text-xl font-bold">MeraFootball</h4>
+              </div>
+              <p className="text-gray-400">
+                Halısaha futbol organizasyonları için profesyonel platform
+              </p>
+            </div>
+            <div>
+              <h5 className="font-semibold mb-4">Hızlı Linkler</h5>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link href="/" className="hover:text-white transition-colors">Ana Sayfa</Link></li>
+                <li><Link href="/how-it-works" className="hover:text-white transition-colors">Nasıl Çalışır?</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">Giriş Yap</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Kayıt Ol</Link></li>
+                {user && <li><Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>}
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-semibold mb-4">Destek</h5>
+              <ul className="space-y-2 text-gray-400">
+                <li>Email: destek@merafootball.com</li>
+                <li>7/24 Destek</li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>© 2024 MeraFootball. Tüm hakları saklıdır.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
