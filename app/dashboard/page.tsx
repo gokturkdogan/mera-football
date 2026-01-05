@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,9 @@ import {
   Loader2,
   Target,
   Trash2,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 interface User {
@@ -60,6 +62,10 @@ export default function DashboardPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef<number | null>(null)
+  const touchEndX = useRef<number | null>(null)
 
   useEffect(() => {
     fetchUser()
@@ -102,6 +108,44 @@ export default function DashboardPage() {
   const handleDeleteClick = (org: Organization) => {
     setOrganizationToDelete(org)
     setDeleteModalOpen(true)
+  }
+
+  const handlePrevSlide = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide(currentSlide - 1)
+    }
+  }
+
+  const handleNextSlide = () => {
+    if (currentSlide < organizations.length - 1) {
+      setCurrentSlide(currentSlide + 1)
+    }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return
+    
+    const distance = touchStartX.current - touchEndX.current
+    const minSwipeDistance = 50
+
+    if (distance > minSwipeDistance && currentSlide < organizations.length - 1) {
+      // Swipe left - next slide
+      handleNextSlide()
+    } else if (distance < -minSwipeDistance && currentSlide > 0) {
+      // Swipe right - previous slide
+      handlePrevSlide()
+    }
+
+    touchStartX.current = null
+    touchEndX.current = null
   }
 
   const handleDeleteConfirm = async () => {
@@ -366,7 +410,8 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Desktop Grid View */}
+              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {organizations.map((org) => (
                   <Card key={org.id} className="border-2 hover:border-green-400 hover:shadow-xl transition-all bg-white h-full flex flex-col relative group">
                     {isAdmin && (
@@ -457,6 +502,157 @@ export default function DashboardPage() {
                     </Link>
                   </Card>
                 ))}
+              </div>
+
+              {/* Mobile Carousel View */}
+              <div className="md:hidden relative mt-6">
+                <div 
+                  ref={carouselRef}
+                  className="overflow-hidden relative"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div 
+                    className="flex transition-transform duration-300 ease-in-out"
+                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  >
+                    {organizations.map((org) => (
+                      <div key={org.id} className="min-w-full px-2">
+                        <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all bg-white h-full flex flex-col relative group">
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute top-2 right-2 z-10 h-8 w-8 p-0 bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-500 border border-gray-200 shadow-sm"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleDeleteClick(org)
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Link href={`/organization/${org.id}`} className="flex-1 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start gap-3 mb-2">
+                                {/* Avatar */}
+                                <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                                  {org.avatarUrl ? (
+                                    <img 
+                                      src={org.avatarUrl} 
+                                      alt={org.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Building2 className="w-8 h-8 text-green-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <CardTitle className="text-xl mb-1">{org.name}</CardTitle>
+                                      <CardDescription className="line-clamp-2">
+                                        {org.description || 'Açıklama yok'}
+                                      </CardDescription>
+                                    </div>
+                                    {isAdmin && org.owner.plan === 'PREMIUM' && (
+                                      <span className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 flex-shrink-0 bg-yellow-100 text-yellow-800 border-2 border-yellow-300">
+                                        <Star className="w-3 h-3 fill-yellow-800" />
+                                        Premium
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <div className="space-y-3 mb-4">
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Users className="w-4 h-4 text-gray-500" />
+                                  <span className="font-semibold">Üye Sayısı:</span>
+                                  <span className="font-bold text-gray-900">{org._count.members}</span>
+                                </div>
+                                {isAdmin && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="font-semibold text-gray-600">Plan:</span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                      org.owner.plan === 'PREMIUM'
+                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                        : 'bg-gray-100 text-gray-800 border border-gray-300'
+                                    }`}>
+                                      {org.owner.plan === 'PREMIUM' ? (
+                                        <>
+                                          <Star className="w-3 h-3 fill-yellow-800" />
+                                          Premium
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FileText className="w-3 h-3" />
+                                          Free
+                                        </>
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              <Button 
+                                variant="outline" 
+                                className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold flex items-center justify-center gap-2"
+                              >
+                                Detayları Gör
+                                <ArrowRight className="w-4 h-4" />
+                              </Button>
+                            </CardContent>
+                          </Link>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Navigation Arrows */}
+                {organizations.length > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-20 h-10 w-10 rounded-full bg-white/90 border-2 border-gray-300 shadow-lg hover:bg-white hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handlePrevSlide}
+                      disabled={currentSlide === 0}
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-700" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-20 h-10 w-10 rounded-full bg-white/90 border-2 border-gray-300 shadow-lg hover:bg-white hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleNextSlide}
+                      disabled={currentSlide === organizations.length - 1}
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-700" />
+                    </Button>
+                  </>
+                )}
+
+                {/* Slide Indicators */}
+                {organizations.length > 1 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    {organizations.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`h-2 rounded-full transition-all ${
+                          index === currentSlide
+                            ? 'w-8 bg-green-500'
+                            : 'w-2 bg-gray-300'
+                        }`}
+                        aria-label={`Slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

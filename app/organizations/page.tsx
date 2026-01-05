@@ -7,11 +7,26 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import Navbar from '@/components/Navbar'
+import { 
+  Building2, 
+  Trophy, 
+  Search, 
+  Users, 
+  Calendar, 
+  Star, 
+  FileText, 
+  Info, 
+  ArrowRight,
+  Loader2,
+  Target,
+  User
+} from 'lucide-react'
 
 interface Organization {
   id: string
   name: string
   description: string | null
+  avatarUrl: string | null
   createdAt: string
   owner: {
     id: string
@@ -77,8 +92,8 @@ export default function OrganizationsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Yükleniyor...</p>
+          <Loader2 className="w-16 h-16 text-green-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Yükleniyor...</p>
         </div>
       </div>
     )
@@ -99,8 +114,8 @@ export default function OrganizationsPage() {
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl backdrop-blur-sm border-4 border-white/30">
-                🏆
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl">
+                <Building2 className="w-10 h-10 text-white" />
               </div>
             </div>
           </div>
@@ -109,15 +124,15 @@ export default function OrganizationsPage() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Card */}
-        <Card className="mb-6 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+        <Card className="mb-6 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
                 <p className="text-4xl font-black text-green-600">{organizations.length}</p>
               </div>
-              <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center text-3xl">
-                🏆
+              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                <Trophy className="w-8 h-8 text-white" />
               </div>
             </div>
           </CardContent>
@@ -134,21 +149,7 @@ export default function OrganizationsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-6 text-lg"
               />
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
             {searchTerm && (
               <p className="text-sm text-gray-600 mt-2">
@@ -171,7 +172,9 @@ export default function OrganizationsPage() {
           <CardContent>
             {filteredOrganizations.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
+                <div className="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Search className="w-12 h-12 text-gray-500" />
+                </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {searchTerm ? 'Organizasyon bulunamadı' : 'Henüz organizasyon yok'}
                 </h3>
@@ -205,24 +208,40 @@ export default function OrganizationsPage() {
                       >
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">
-                              {org.name.charAt(0).toUpperCase()}
+                            <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                              {org.avatarUrl ? (
+                                <img 
+                                  src={org.avatarUrl} 
+                                  alt={org.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Building2 className="w-6 h-6 text-green-600" />
+                              )}
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <span className="font-semibold text-gray-900 block">{org.name}</span>
                               {org.description && (
                                 <span className="text-xs text-gray-500 line-clamp-1">
-                                  {org.description}
+                                  {org.description.length > 20 
+                                    ? `${org.description.substring(0, 20)}...` 
+                                    : org.description}
                                 </span>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="p-4">
-                          <div>
-                            <span className="font-medium text-gray-900 block">{org.owner.name}</span>
-                            <span className="text-sm text-gray-600">{org.owner.email}</span>
-                          </div>
+                          <Link href={`/players/${org.owner.id}`} className="inline-block">
+                            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-semibold text-sm transition-colors cursor-pointer ${
+                              org.owner.plan === 'PREMIUM'
+                                ? 'bg-yellow-100 text-yellow-800 border border-yellow-300 hover:bg-yellow-200'
+                                : 'bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200'
+                            }`}>
+                              <User className="w-4 h-4" />
+                              {org.owner.name}
+                            </span>
+                          </Link>
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold text-sm ${
@@ -230,24 +249,34 @@ export default function OrganizationsPage() {
                               ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                               : 'bg-gray-100 text-gray-800 border border-gray-300'
                           }`}>
-                            {org.owner.plan === 'PREMIUM' ? '⭐' : '🆓'}
-                            {org.owner.plan}
+                            {org.owner.plan === 'PREMIUM' ? (
+                              <>
+                                <Star className="w-3 h-3 fill-yellow-800" />
+                                Premium
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="w-3 h-3" />
+                                Free
+                              </>
+                            )}
                           </span>
                         </td>
                         <td className="p-4 text-center">
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-semibold text-sm">
-                            <span>👥</span>
+                            <Users className="w-4 h-4" />
                             {org._count.members}
                           </span>
                         </td>
                         <td className="p-4 text-center">
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-800 font-semibold text-sm">
-                            <span>⚽</span>
+                            <Target className="w-4 h-4" />
                             {org._count.matches}
                           </span>
                         </td>
                         <td className="p-4">
-                          <span className="text-gray-700">
+                          <span className="text-gray-700 flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
                             {new Date(org.createdAt).toLocaleDateString('tr-TR', {
                               year: 'numeric',
                               month: 'long',
@@ -257,8 +286,9 @@ export default function OrganizationsPage() {
                         </td>
                         <td className="p-4 text-center">
                           <Link href={`/organization/${org.id}`}>
-                            <Button variant="outline" size="sm" className="border-green-500 text-green-600 hover:bg-green-50">
+                            <Button variant="outline" size="sm" className="border-green-500 text-green-600 hover:bg-green-50 flex items-center gap-2">
                               Detay
+                              <ArrowRight className="w-4 h-4" />
                             </Button>
                           </Link>
                         </td>
@@ -272,11 +302,13 @@ export default function OrganizationsPage() {
         </Card>
 
         {/* Info Card */}
-        <Card className="mt-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
+        <Card className="mt-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span>ℹ️</span>
-              Bilgi
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                <Info className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-gray-900">Bilgi</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -288,6 +320,44 @@ export default function OrganizationsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 md:py-12 mt-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                  <Target className="w-6 h-6 text-white" />
+                </div>
+                <h4 className="text-xl font-bold">MeraFootball</h4>
+              </div>
+              <p className="text-gray-400">
+                Halısaha futbol organizasyonları için profesyonel platform
+              </p>
+            </div>
+            <div>
+              <h5 className="font-semibold mb-4">Hızlı Linkler</h5>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link href="/" className="hover:text-white transition-colors">Ana Sayfa</Link></li>
+                <li><Link href="/how-it-works" className="hover:text-white transition-colors">Nasıl Çalışır?</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">Giriş Yap</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Kayıt Ol</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-semibold mb-4">Destek</h5>
+              <ul className="space-y-2 text-gray-400">
+                <li>Email: destek@merafootball.com</li>
+                <li>7/24 Destek</li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>© 2024 MeraFootball. Tüm hakları saklıdır.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
