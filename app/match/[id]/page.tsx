@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
 
 interface Match {
@@ -176,13 +177,13 @@ export default function MatchPage() {
       })
       if (res.ok) {
         setAttendanceStatus(status)
-        alert(status === 'ACCEPTED' ? 'Maça katılacağınızı belirttiniz!' : 'Maça katılmayacağınızı belirttiniz.')
+        showToast(status === 'ACCEPTED' ? 'Maça katılacağınızı belirttiniz!' : 'Maça katılmayacağınızı belirttiniz.', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     } finally {
       setLoadingAttendance(false)
     }
@@ -508,7 +509,7 @@ export default function MatchPage() {
         
         if (!deleteRes.ok) {
           const deleteData = await deleteRes.json()
-          alert(deleteData.error || 'Oyuncu pozisyonu güncellenirken hata oluştu')
+          showToast(deleteData.error || 'Oyuncu pozisyonu güncellenirken hata oluştu', 'error')
           loadFormationFromRoster()
           return
         }
@@ -529,12 +530,12 @@ export default function MatchPage() {
         fetchMatch()
       } else {
         const data = await res.json()
-        alert(data.error || 'Oyuncu eklenirken hata oluştu')
+        showToast(data.error || 'Oyuncu eklenirken hata oluştu', 'error')
         // Revert formation state
         loadFormationFromRoster()
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
       loadFormationFromRoster()
     }
   }
@@ -580,13 +581,13 @@ export default function MatchPage() {
         const data = await res.json()
         setMatch(data.match)
         setShowVenueEdit(false)
-        alert('Saha adı güncellendi')
+        showToast('Saha adı güncellendi', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     } finally {
       setSavingVenue(false)
     }
@@ -595,11 +596,11 @@ export default function MatchPage() {
   const handleUpdateCapacity = async () => {
     if (!match) return
     if (capacityValue < 2) {
-      alert('Kapasite en az 2 olmalıdır')
+      showToast('Kapasite en az 2 olmalıdır', 'error')
       return
     }
     if (capacityValue < match.roster.length) {
-      alert(`Kapasite, mevcut kadro sayısından (${match.roster.length}) küçük olamaz`)
+      showToast(`Kapasite, mevcut kadro sayısından (${match.roster.length}) küçük olamaz`, 'error')
       return
     }
     setSavingCapacity(true)
@@ -614,13 +615,13 @@ export default function MatchPage() {
         const data = await res.json()
         setMatch(data.match)
         setShowCapacityEdit(false)
-        alert('Kapasite güncellendi')
+        showToast('Kapasite güncellendi', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     } finally {
       setSavingCapacity(false)
     }
@@ -638,13 +639,13 @@ export default function MatchPage() {
       if (res.ok) {
         fetchMatch()
         setShowScoreForm(false)
-        alert('Skor kaydedildi')
+        showToast('Skor kaydedildi', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     }
   }
 
@@ -660,13 +661,13 @@ export default function MatchPage() {
         fetchMatch()
         setShowRatingForm(false)
         setRatingData({ ratedUserId: '', rating: 5, comment: '' })
-        alert('Puanlama kaydedildi')
+        showToast('Puanlama kaydedildi', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     }
   }
 
@@ -1317,10 +1318,10 @@ export default function MatchPage() {
                                 fetchMatch()
                               } else {
                                 const data = await res.json()
-                                alert(data.error || 'Hata oluştu')
+                                showToast(data.error || 'Hata oluştu', 'error')
                               }
                             } catch (error) {
-                              alert('Bir hata oluştu')
+                              showToast('Bir hata oluştu', 'error')
                             }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"

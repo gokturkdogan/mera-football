@@ -3,9 +3,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
 
 export default function PlansPage() {
+  const { showToast } = useToast()
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       <Navbar />
@@ -196,7 +198,7 @@ export default function PlansPage() {
                 size="lg"
                 onClick={() => {
                   // Premium ol butonu - şimdilik action yok
-                  alert('Premium plan özelliği yakında eklenecek!')
+                  showToast('Premium plan özelliği yakında eklenecek!', 'info')
                 }}
               >
                 Premium Ol

@@ -235,74 +235,6 @@ export default function PlayerDetailPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Organizasyonlar */}
-          <Card className="shadow-xl border-2 border-green-200 bg-white">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-green-600" />
-                Organizasyonlar
-                <span className="ml-auto text-sm font-normal text-gray-600">
-                  ({player.organizations.length})
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {player.organizations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Building2 className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-600 font-medium">Henüz organizasyona katılmamış</p>
-                  </div>
-                ) : (
-                  player.organizations.map((org) => (
-                    <Link
-                      key={org.id}
-                      href={`/organization/${org.id}`}
-                      className="block p-4 border-2 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all hover:shadow-md border-gray-200 group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 truncate">{org.name}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="text-xs text-gray-600 flex items-center gap-1">
-                              {org.role === 'ADMIN' ? (
-                                <>
-                                  <Crown className="w-3 h-3 text-yellow-600" />
-                                  Yönetici
-                                </>
-                              ) : (
-                                <>
-                                  <User className="w-3 h-3 text-blue-600" />
-                                  Oyuncu
-                                </>
-                              )}
-                            </span>
-                            <span className="text-xs text-gray-600 flex items-center gap-1">
-                              {org.status === 'APPROVED' ? (
-                                <>
-                                  <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                  Onaylı
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="w-3 h-3 text-orange-600" />
-                                  Beklemede
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                        <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Bilgiler */}
           <Card className="shadow-xl border-2 border-blue-200 bg-white">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b-2 border-blue-200">
@@ -436,6 +368,74 @@ export default function PlayerDetailPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Organizasyonlar */}
+          <Card className="shadow-xl border-2 border-green-200 bg-white">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-6 h-6 text-green-600" />
+                Organizasyonlar
+                <span className="ml-auto text-sm font-normal text-gray-600">
+                  ({player.organizations.length})
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {player.organizations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 font-medium">Henüz organizasyona katılmamış</p>
+                  </div>
+                ) : (
+                  player.organizations.map((org) => (
+                    <Link
+                      key={org.id}
+                      href={`/organization/${org.id}`}
+                      className="block p-4 border-2 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all hover:shadow-md border-gray-200 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 truncate">{org.name}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs text-gray-600 flex items-center gap-1">
+                              {org.role === 'ADMIN' ? (
+                                <>
+                                  <Crown className="w-3 h-3 text-yellow-600" />
+                                  Yönetici
+                                </>
+                              ) : (
+                                <>
+                                  <User className="w-3 h-3 text-blue-600" />
+                                  Oyuncu
+                                </>
+                              )}
+                            </span>
+                            <span className="text-xs text-gray-600 flex items-center gap-1">
+                              {org.status === 'APPROVED' ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                  Onaylı
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-3 h-3 text-orange-600" />
+                                  Beklemede
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

@@ -89,6 +89,14 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          members: {
+            where: {
+              status: 'PENDING',
+            },
+            select: {
+              id: true,
+            },
+          },
         },
       })
 
@@ -109,8 +117,14 @@ export async function GET(request: NextRequest) {
       const uniqueUserIds = new Set(allMembers.map(member => member.userId))
       const uniqueMemberCount = uniqueUserIds.size
 
+      // Add pending request count to each organization
+      const organizationsWithPending = organizations.map((org) => ({
+        ...org,
+        pendingRequestsCount: org.members?.length || 0,
+      }))
+
       return NextResponse.json({ 
-        organizations,
+        organizations: organizationsWithPending,
         uniqueMemberCount 
       })
     }

@@ -19,9 +19,22 @@ export async function POST(
 
     const payload = verifyToken(token)
 
-    if (!payload || payload.role !== 'PLAYER') {
+    if (!payload) {
       return NextResponse.json(
-        { error: 'Only players can join organizations' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check user's current role from database (not from token, as role may have changed)
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true },
+    })
+
+    if (!user || user.role !== 'PLAYER') {
+      return NextResponse.json(
+        { error: 'Sadece oyuncular organizasyonlara katılabilir' },
         { status: 403 }
       )
     }

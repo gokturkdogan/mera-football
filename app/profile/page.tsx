@@ -94,6 +94,8 @@ export default function ProfilePage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [showRoleChangeModal, setShowRoleChangeModal] = useState(false)
+  const [changingRole, setChangingRole] = useState(false)
   const profileInfoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -343,6 +345,35 @@ export default function ProfilePage() {
     setTimeout(() => {
       profileInfoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 100)
+  }
+
+  const handleChangeRole = async () => {
+    if (changingRole) return
+    setChangingRole(true)
+    try {
+      const newRole = isAdmin ? 'PLAYER' : 'ADMIN'
+      const res = await fetch('/api/users/change-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newRole }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showToast('Rol başarıyla değiştirildi', 'success')
+        setShowRoleChangeModal(false)
+        // Sayfayı yenile
+        router.refresh()
+        fetchUser()
+        fetchOrganizations()
+      } else {
+        showToast(data.error || 'Rol değiştirme başarısız', 'error')
+      }
+    } catch (error) {
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setChangingRole(false)
+    }
   }
 
   return (
@@ -638,23 +669,43 @@ export default function ProfilePage() {
               </Dialog>
               
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
-                    isAdmin 
-                      ? 'bg-yellow-400 text-yellow-900' 
-                      : 'bg-blue-400 text-blue-900'
-                  }`}>
-                    {isAdmin ? (
-                      <>
-                        <Crown className="w-4 h-4" />
-                        Yönetici
-                      </>
-                    ) : (
-                      <>
-                        <User className="w-4 h-4" />
-                        Oyuncu
-                      </>
-                    )}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
+                      isAdmin 
+                        ? 'bg-yellow-400 text-yellow-900' 
+                        : 'bg-blue-400 text-blue-900'
+                    }`}>
+                      {isAdmin ? (
+                        <>
+                          <Crown className="w-4 h-4" />
+                          Yönetici
+                        </>
+                      ) : (
+                        <>
+                          <User className="w-4 h-4" />
+                          Oyuncu
+                        </>
+                      )}
+                    </span>
+                    <Button
+                      onClick={() => setShowRoleChangeModal(true)}
+                      size="sm"
+                      variant="outline"
+                      className="border-2 border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+                    >
+                      {isAdmin ? (
+                        <>
+                          <User className="w-4 h-4 mr-1" />
+                          Oyuncu Rolüne Geç
+                        </>
+                      ) : (
+                        <>
+                          <Crown className="w-4 h-4 mr-1" />
+                          Yönetici Rolüne Geç
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   {user?.phone && (
                     <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
                       <Phone className="w-4 h-4" />
@@ -1458,9 +1509,9 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div>
                   {organizations.map((org) => (
-                    <Link key={org.id} href={`/organization/${org.id}`}>
+                    <Link key={org.id} href={`/organization/${org.id}`} className="block mb-4 last:mb-0">
                       <div className="p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all cursor-pointer bg-white">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
@@ -1519,6 +1570,94 @@ export default function ProfilePage() {
           </Card>
         </div>
       </div>
+
+      {/* Role Change Modal */}
+      <Dialog 
+        open={showRoleChangeModal} 
+        onOpenChange={(open) => {
+          if (!open && !changingRole) {
+            setShowRoleChangeModal(false)
+          }
+        }}
+        disabled={changingRole}
+      >
+        <DialogContent className="relative max-w-md">
+          {changingRole && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+              <div className="text-center">
+                <Loader2 className={`w-8 h-8 animate-spin mx-auto mb-2 ${isAdmin ? 'text-red-600' : 'text-yellow-600'}`} />
+                <p className="text-sm text-gray-700 font-medium">
+                  Rol değiştiriliyor...
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {isAdmin ? 'Oyuncu Rolüne Geç' : 'Yönetici Rolüne Geç'}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {isAdmin ? (
+                <>
+                  <p className="mb-3 text-red-600 font-semibold">
+                    ⚠️ UYARI: Bu işlem geri alınamaz!
+                  </p>
+                  <p className="mb-2">
+                    Oyuncu rolüne geçtiğinizde:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                    <li>Bugüne kadar oluşturduğunuz <strong>tüm organizasyonlar</strong> silinecek</li>
+                    <li>Organizasyonlarınızdaki <strong>tüm tesisler</strong> silinecek</li>
+                    <li>Bu tesislerde oynanan <strong>tüm maçlar ve maç verileri</strong> silinecek</li>
+                    <li>Organizasyonlarınızdaki <strong>tüm üyeler</strong> silinecek</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="mb-3 text-red-600 font-semibold">
+                    ⚠️ UYARI: Bu işlem geri alınamaz!
+                  </p>
+                  <p className="mb-2">
+                    Yönetici rolüne geçtiğinizde:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                    <li>Katılmış olduğunuz <strong>tüm organizasyonlardan</strong> atılacaksınız</li>
+                    <li>Organizasyon üyelikleriniz <strong>tamamen silinecek</strong></li>
+                  </ul>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRoleChangeModal(false)}
+              disabled={changingRole}
+              className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleChangeRole}
+              disabled={changingRole}
+              variant={isAdmin ? "destructive" : "default"}
+              className={isAdmin 
+                ? "bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                : "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              }
+            >
+              {changingRole ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Değiştiriliyor...
+                </>
+              ) : (
+                'Onayla ve Değiştir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 md:py-12 mt-12">

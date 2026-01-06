@@ -28,7 +28,8 @@ import {
   Trash2,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from 'lucide-react'
 
 interface User {
@@ -50,6 +51,7 @@ interface Organization {
   _count: {
     members: number
   }
+  pendingRequestsCount?: number
 }
 
 export default function DashboardPage() {
@@ -414,6 +416,18 @@ export default function DashboardPage() {
               <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {organizations.map((org) => (
                   <Card key={org.id} className="border-2 hover:border-green-400 hover:shadow-xl transition-all bg-white h-full flex flex-col relative group">
+                    {/* Pending Requests Badge */}
+                    {isAdmin && (org.pendingRequestsCount ?? 0) > 0 && (
+                      <div className="absolute top-2 left-2 z-20">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
+                          <div className="relative bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg border-2 border-white animate-pulse">
+                            <Bell className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold">{org.pendingRequestsCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {isAdmin && (
                       <Button
                         variant="ghost"
@@ -520,6 +534,18 @@ export default function DashboardPage() {
                     {organizations.map((org) => (
                       <div key={org.id} className="min-w-full px-2">
                         <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all bg-white h-full flex flex-col relative group">
+                          {/* Pending Requests Badge */}
+                          {isAdmin && (org.pendingRequestsCount ?? 0) > 0 && (
+                            <div className="absolute top-2 left-2 z-20">
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
+                                <div className="relative bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg border-2 border-white animate-pulse">
+                                  <Bell className="w-3.5 h-3.5" />
+                                  <span className="text-xs font-bold">{org.pendingRequestsCount}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {isAdmin && (
                             <Button
                               variant="ghost"

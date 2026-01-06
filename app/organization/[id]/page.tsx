@@ -132,13 +132,23 @@ export default function OrganizationPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [currentFacilityIndex, setCurrentFacilityIndex] = useState(0)
+  const [currentMemberIndex, setCurrentMemberIndex] = useState(0)
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
   const [pendingRequestsExpanded, setPendingRequestsExpanded] = useState(false)
+  const [showCancelRequestModal, setShowCancelRequestModal] = useState(false)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [cancelingRequest, setCancelingRequest] = useState(false)
+  const [joiningRequest, setJoiningRequest] = useState(false)
+  const [processingMemberId, setProcessingMemberId] = useState<string | null>(null)
+  const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
   const { showToast } = useToast()
   const facilityFormRef = useRef<HTMLDivElement>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const memberCarouselRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number | null>(null)
   const touchEndX = useRef<number | null>(null)
+  const memberTouchStartX = useRef<number | null>(null)
+  const memberTouchEndX = useRef<number | null>(null)
 
   const toggleMemberExpanded = (memberId: string) => {
     setExpandedMembers(prev => {
@@ -191,7 +201,7 @@ export default function OrganizationPage() {
       })
       if (!res.ok) {
         if (res.status === 404) {
-          alert('Organizasyon bulunamadı')
+          showToast('Organizasyon bulunamadı', 'error')
           router.push('/organizations')
         } else {
           router.push('/login')
@@ -208,6 +218,8 @@ export default function OrganizationPage() {
   }
 
   const handleJoin = async () => {
+    if (joiningRequest) return
+    setJoiningRequest(true)
     try {
       const res = await fetch(`/api/organizations/${params.id}/join`, {
         method: 'POST',
@@ -215,37 +227,64 @@ export default function OrganizationPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        alert('Katılım isteğiniz gönderildi! Organizasyon yöneticisi onayladığında organizasyona katılacaksınız.')
+        showToast('Katılım isteğiniz gönderildi! Organizasyon yöneticisi onayladığında organizasyona katılacaksınız.', 'success')
         fetchOrganization()
       } else {
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setJoiningRequest(false)
     }
   }
 
-  const handleLeave = async () => {
-    if (!confirm('Bu organizasyondan ayrılmak istediğinize emin misiniz?')) {
-      return
-    }
+  const handleCancelRequest = async () => {
+    if (cancelingRequest) return
+    setCancelingRequest(true)
     try {
       const res = await fetch(`/api/organizations/${params.id}/leave`, {
         method: 'POST',
         credentials: 'include',
       })
       if (res.ok) {
+        showToast('Katılım isteği iptal edildi', 'success')
+        setShowCancelRequestModal(false)
+        fetchOrganization()
+      } else {
+        const data = await res.json()
+        showToast(data.error || 'Hata oluştu', 'error')
+      }
+    } catch (error) {
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setCancelingRequest(false)
+    }
+  }
+
+  const handleLeave = async () => {
+    try {
+      const res = await fetch(`/api/organizations/${params.id}/leave`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        showToast('Organizasyondan ayrıldınız', 'success')
+        setShowLeaveModal(false)
         router.push('/dashboard')
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
     }
   }
 
   const handleApproveMember = async (memberId: string) => {
+    if (processingMemberId) return
+    setProcessingMemberId(memberId)
+    setProcessingAction('approve')
     try {
       const res = await fetch(`/api/organizations/${params.id}/members`, {
         method: 'PATCH',
@@ -254,21 +293,27 @@ export default function OrganizationPage() {
         body: JSON.stringify({ memberId, status: 'APPROVED' }),
       })
       if (res.ok) {
-        alert('Katılım isteği onaylandı! Oyuncu organizasyona eklendi.')
+        showToast('Katılım isteği onaylandı! Oyuncu organizasyona eklendi.', 'success')
         fetchOrganization()
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setProcessingMemberId(null)
+      setProcessingAction(null)
     }
   }
 
   const handleRejectMember = async (memberId: string) => {
+    if (processingMemberId) return
     if (!confirm('Bu katılım isteğini reddetmek istediğinize emin misiniz?')) {
       return
     }
+    setProcessingMemberId(memberId)
+    setProcessingAction('reject')
     try {
       const res = await fetch(`/api/organizations/${params.id}/members`, {
         method: 'PATCH',
@@ -277,14 +322,17 @@ export default function OrganizationPage() {
         body: JSON.stringify({ memberId, status: 'REJECTED' }),
       })
       if (res.ok) {
-        alert('Katılım isteği reddedildi')
+        showToast('Katılım isteği reddedildi', 'success')
         fetchOrganization()
       } else {
         const data = await res.json()
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setProcessingMemberId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -554,8 +602,54 @@ export default function OrganizationPage() {
 
   const isOwner = user?.id === organization?.owner.id
   const isMember = organization?.members?.some((m) => m.userId === user?.id && m.status === 'APPROVED') || false
+  const hasPendingRequest = organization?.members?.some((m) => m.userId === user?.id && m.status === 'PENDING') || false
   const approvedMembers = organization?.members?.filter((m) => m.status === 'APPROVED') || []
   const pendingMembers = organization?.members?.filter((m) => m.status === 'PENDING') || []
+
+  // Member carousel functions
+  const itemsPerPageDesktop = 3
+  const itemsPerPageMobile = 1
+  const totalPagesDesktop = Math.ceil(approvedMembers.length / itemsPerPageDesktop)
+  const totalPagesMobile = Math.ceil(approvedMembers.length / itemsPerPageMobile)
+
+  const handleMemberPrev = () => {
+    if (window.innerWidth >= 768) {
+      setCurrentMemberIndex((prev) => (prev > 0 ? prev - 1 : totalPagesDesktop - 1))
+    } else {
+      setCurrentMemberIndex((prev) => (prev > 0 ? prev - 1 : totalPagesMobile - 1))
+    }
+  }
+
+  const handleMemberNext = () => {
+    if (window.innerWidth >= 768) {
+      setCurrentMemberIndex((prev) => (prev < totalPagesDesktop - 1 ? prev + 1 : 0))
+    } else {
+      setCurrentMemberIndex((prev) => (prev < totalPagesMobile - 1 ? prev + 1 : 0))
+    }
+  }
+
+  const handleMemberTouchStart = (e: React.TouchEvent) => {
+    memberTouchStartX.current = e.touches[0].clientX
+  }
+
+  const handleMemberTouchMove = (e: React.TouchEvent) => {
+    memberTouchEndX.current = e.touches[0].clientX
+  }
+
+  const handleMemberTouchEnd = () => {
+    if (!memberTouchStartX.current || !memberTouchEndX.current) return
+    const distance = memberTouchStartX.current - memberTouchEndX.current
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+    if (isLeftSwipe) {
+      handleMemberNext()
+    }
+    if (isRightSwipe) {
+      handleMemberPrev()
+    }
+    memberTouchStartX.current = null
+    memberTouchEndX.current = null
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -565,11 +659,11 @@ export default function OrganizationPage() {
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-16">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 w-full min-w-0">
+              <div className="flex items-center gap-3 sm:gap-4 mb-4">
                 {isOwner ? (
-                  <div className="relative group">
-                    <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden">
+                  <div className="relative group flex-shrink-0">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden">
                       {organization.avatarUrl ? (
                         <img 
                           src={organization.avatarUrl} 
@@ -577,7 +671,7 @@ export default function OrganizationPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Trophy className="w-10 h-10 text-white" />
+                        <Trophy className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                       )}
                     </div>
                     {/* Hover Overlay */}
@@ -589,11 +683,11 @@ export default function OrganizationPage() {
                         }
                       }}
                     >
-                      <Edit className="w-8 h-8 text-white" />
+                      <Edit className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
                   </div>
                 ) : (
-                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden flex-shrink-0">
                     {organization.avatarUrl ? (
                       <img 
                         src={organization.avatarUrl} 
@@ -601,13 +695,13 @@ export default function OrganizationPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Trophy className="w-10 h-10 text-white" />
+                      <Trophy className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                     )}
                   </div>
                 )}
-                <div>
-                  <h1 className="text-4xl font-black mb-2">{organization.name}</h1>
-                  <p className="text-xl opacity-90">{organization.description || 'Açıklama yok'}</p>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black mb-1 sm:mb-2 truncate">{organization.name}</h1>
+                  <p className="text-sm sm:text-base md:text-lg lg:text-xl opacity-90 line-clamp-2">{organization.description || 'Açıklama yok'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 mt-4 flex-wrap">
@@ -638,62 +732,80 @@ export default function OrganizationPage() {
                 </span>
               </div>
             </div>
-            {/* Premium Upgrade Button - Hero Section */}
-            {isOwner && organization.owner.plan === 'FREE' && (
-              <div className="flex-shrink-0">
+            {/* Action Buttons - Hero Section */}
+            <div className="flex flex-col gap-3 flex-shrink-0">
+              {/* Premium Upgrade Button - Owner Only */}
+              {isOwner && organization.owner.plan === 'FREE' && (
                 <Link href="/payment">
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-xl text-white border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold"
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-xl text-white border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold w-full"
                   >
                     <Gem className="w-6 h-6" />
                     Premium'a Geç
                   </Button>
                 </Link>
-              </div>
-            )}
-            {isOwner && organization.owner.plan === 'PREMIUM' && (
-              <div className="flex-shrink-0">
+              )}
+              {isOwner && organization.owner.plan === 'PREMIUM' && (
                 <Link href="/payment">
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-xl text-yellow-900 border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold"
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-xl text-yellow-900 border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold w-full"
                   >
                     <Star className="w-6 h-6 fill-yellow-900" />
                     Premium Aktif
                   </Button>
                 </Link>
-              </div>
-            )}
+              )}
+              {/* Pending Request Button */}
+              {hasPendingRequest && !isMember && !isOwner && (
+                <Button 
+                  onClick={() => setShowCancelRequestModal(true)} 
+                  size="lg"
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-xl text-white border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold w-full"
+                >
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  İstek Gönderildi - Yanıt Bekleniyor
+                </Button>
+              )}
+              {/* Join Button - Player Only (No pending request) */}
+              {!hasPendingRequest && !isMember && !isOwner && (
+                <Button 
+                  onClick={handleJoin} 
+                  size="lg"
+                  disabled={joiningRequest}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-xl text-white border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {joiningRequest ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      İstek Gönderiliyor...
+                    </>
+                  ) : (
+                    <>
+                      <Circle className="w-6 h-6" />
+                      Organizasyona Katıl
+                    </>
+                  )}
+                </Button>
+              )}
+              {/* Leave Button - Member Only */}
+              {isMember && !isOwner && (
+                <Button 
+                  onClick={() => setShowLeaveModal(true)} 
+                  variant="destructive" 
+                  size="lg"
+                  className="shadow-xl border-2 border-white/30 backdrop-blur-sm w-full"
+                >
+                  Organizasyondan Ayrıl
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Action Buttons */}
-        <div className="mb-6">
-          {!isMember && !isOwner && (
-            <Button 
-              onClick={handleJoin} 
-              size="lg"
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center gap-2"
-            >
-              <Circle className="w-5 h-5" />
-              Organizasyona Katıl
-            </Button>
-          )}
-          {isMember && !isOwner && (
-            <Button 
-              onClick={handleLeave} 
-              variant="destructive" 
-              size="lg"
-              className="shadow-lg"
-            >
-              Organizasyondan Ayrıl
-            </Button>
-          )}
-        </div>
-
         {/* Tesis Ekleme Formu */}
         {isOwner && showFacilityForm && (
           <Card ref={facilityFormRef} className="mb-6 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
@@ -1183,10 +1295,20 @@ export default function OrganizationPage() {
                               e.stopPropagation()
                               handleApproveMember(member.id)
                             }}
-                            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                            disabled={processingMemberId !== null}
+                            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Check className="w-4 h-4" />
-                            Onayla
+                            {processingMemberId === member.id && processingAction === 'approve' ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Onaylanıyor...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4" />
+                                Onayla
+                              </>
+                            )}
                           </Button>
                           <Button
                             size="sm"
@@ -1195,10 +1317,20 @@ export default function OrganizationPage() {
                               e.stopPropagation()
                               handleRejectMember(member.id)
                             }}
-                            className="flex items-center gap-2"
+                            disabled={processingMemberId !== null}
+                            className="flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <X className="w-4 h-4" />
-                            Reddet
+                            {processingMemberId === member.id && processingAction === 'reject' ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Reddediliyor...
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-4 h-4" />
+                                Reddet
+                              </>
+                            )}
                           </Button>
                           <button
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1306,29 +1438,119 @@ export default function OrganizationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {approvedMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white"
+              {/* Desktop Carousel */}
+              <div className="hidden md:block relative">
+                {approvedMembers.length > itemsPerPageDesktop && (
+                  <>
+                    <button
+                      onClick={handleMemberPrev}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-200"
+                    >
+                      <ChevronLeft className="w-6 h-6 text-gray-700" />
+                    </button>
+                    <button
+                      onClick={handleMemberNext}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-200"
+                    >
+                      <ChevronRight className="w-6 h-6 text-gray-700" />
+                    </button>
+                  </>
+                )}
+                <div className="overflow-hidden">
+                  <div 
+                    className="flex transition-transform duration-300 ease-in-out"
+                    style={{ 
+                      transform: `translateX(-${currentMemberIndex * (100 / itemsPerPageDesktop)}%)` 
+                    }}
                   >
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
-                      {member.user.avatarUrl ? (
-                        <img 
-                          src={member.user.avatarUrl} 
-                          alt={member.user.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        member.user.name.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{member.user.name}</p>
-                      <p className="text-xs text-gray-600">{member.user.email}</p>
-                    </div>
+                    {approvedMembers.map((member) => (
+                      <div key={member.id} className="w-1/3 flex-shrink-0 px-2">
+                        <Link
+                          href={`/players/${member.user.id}`}
+                          className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white cursor-pointer"
+                        >
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                            {member.user.avatarUrl ? (
+                              <img 
+                                src={member.user.avatarUrl} 
+                                alt={member.user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              member.user.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">{member.user.name}</p>
+                            <p className="text-xs text-gray-600 truncate">{member.user.email}</p>
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* Mobile Carousel */}
+              <div 
+                className="md:hidden relative"
+                ref={memberCarouselRef}
+                onTouchStart={handleMemberTouchStart}
+                onTouchMove={handleMemberTouchMove}
+                onTouchEnd={handleMemberTouchEnd}
+              >
+                {approvedMembers.length > 1 && (
+                  <>
+                    <button
+                      onClick={handleMemberPrev}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-200"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-700" />
+                    </button>
+                    <button
+                      onClick={handleMemberNext}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-gray-200"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </>
+                )}
+                <div className="overflow-hidden">
+                  <div 
+                    className="flex transition-transform duration-300 ease-in-out"
+                    style={{ 
+                      transform: `translateX(-${currentMemberIndex * (approvedMembers.length === 1 ? 0 : 66.666)}%)` 
+                    }}
+                  >
+                    {approvedMembers.map((member) => (
+                      <div 
+                        key={member.id} 
+                        className={`flex-shrink-0 ${approvedMembers.length === 1 ? 'w-full' : 'w-2/3'} px-2`}
+                      >
+                        <Link
+                          href={`/players/${member.user.id}`}
+                          className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white cursor-pointer"
+                        >
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                            {member.user.avatarUrl ? (
+                              <img 
+                                src={member.user.avatarUrl} 
+                                alt={member.user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              member.user.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">{member.user.name}</p>
+                            <p className="text-xs text-gray-600 truncate">{member.user.email}</p>
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1749,6 +1971,87 @@ export default function OrganizationPage() {
       </div>
 
       {/* Avatar Selection Modal */}
+      {/* Cancel Request Modal */}
+      <Dialog 
+        open={showCancelRequestModal} 
+        onOpenChange={(open) => {
+          if (!open && !cancelingRequest) {
+            setShowCancelRequestModal(false)
+          }
+        }}
+      >
+        <DialogContent className="relative">
+          {cancelingRequest && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 text-yellow-600 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-gray-700 font-medium">
+                  İstek iptal ediliyor...
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogHeader>
+            <DialogTitle>İsteği İptal Et</DialogTitle>
+            <DialogDescription>
+              Bu organizasyona gönderdiğiniz katılım isteğini geri çekmek istediğinize emin misiniz?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelRequestModal(false)}
+              disabled={cancelingRequest}
+              className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleCancelRequest}
+              disabled={cancelingRequest}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cancelingRequest ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  İptal Ediliyor...
+                </>
+              ) : (
+                'İsteği İptal Et'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leave Organization Modal */}
+      <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Organizasyondan Ayrıl</DialogTitle>
+            <DialogDescription>
+              Bu organizasyondan ayrılmak istediğinize emin misiniz? Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLeaveModal(false)}
+              className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleLeave}
+              variant="destructive"
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Ayrıl
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {isOwner && (
         <>
           <Dialog 

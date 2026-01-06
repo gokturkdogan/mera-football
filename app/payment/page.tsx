@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
 
 export default function PaymentPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [formData, setFormData] = useState({
     cardHolderName: '',
     cardNumber: '',
@@ -45,7 +47,7 @@ export default function PaymentPage() {
         return
       }
 
-      alert('Ödeme başarılı! Premium plan aktif edildi. Artık tüm organizasyonlarınız Premium özelliklerine sahip!')
+      showToast('Ödeme başarılı! Premium plan aktif edildi. Artık tüm organizasyonlarınız Premium özelliklerine sahip!', 'success')
       router.push('/profile')
     } catch (err) {
       setError('Bir hata oluştu')
