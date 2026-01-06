@@ -43,7 +43,17 @@ import {
   User,
   Image as ImageIcon,
   Upload,
-  Edit
+  Edit,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Home,
+  Target,
+  Footprints,
+  Ruler,
+  Weight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 
 interface Organization {
@@ -69,6 +79,17 @@ interface Organization {
       email: string
       phone: string | null
       avatarUrl: string | null
+      showPhone: boolean
+      position: string | null
+      strongFoot: string | null
+      height: number | null
+      weight: number | null
+      age: number | null
+      showPosition: boolean
+      showStrongFoot: boolean
+      showHeight: boolean
+      showWeight: boolean
+      showAge: boolean
     }
   }>
   matches: Array<{
@@ -110,8 +131,26 @@ export default function OrganizationPage() {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [currentFacilityIndex, setCurrentFacilityIndex] = useState(0)
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
+  const [pendingRequestsExpanded, setPendingRequestsExpanded] = useState(false)
   const { showToast } = useToast()
   const facilityFormRef = useRef<HTMLDivElement>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef<number | null>(null)
+  const touchEndX = useRef<number | null>(null)
+
+  const toggleMemberExpanded = (memberId: string) => {
+    setExpandedMembers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(memberId)) {
+        newSet.delete(memberId)
+      } else {
+        newSet.add(memberId)
+      }
+      return newSet
+    })
+  }
 
   // Default avatar URLs - Futbol/Halısaha organizasyonları için uygun logolar
   const DEFAULT_AVATARS = [
@@ -257,10 +296,50 @@ export default function OrganizationPage() {
       if (res.ok) {
         const data = await res.json()
         setFacilities(data.facilities || [])
+        setCurrentFacilityIndex(0)
       }
     } catch (error) {
       console.error('Error fetching facilities:', error)
     }
+  }
+
+  const handlePrevFacility = () => {
+    if (currentFacilityIndex > 0) {
+      setCurrentFacilityIndex(currentFacilityIndex - 1)
+    } else {
+      setCurrentFacilityIndex(facilities.length - 1)
+    }
+  }
+
+  const handleNextFacility = () => {
+    if (currentFacilityIndex < facilities.length - 1) {
+      setCurrentFacilityIndex(currentFacilityIndex + 1)
+    } else {
+      setCurrentFacilityIndex(0)
+    }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return
+    const distance = touchStartX.current - touchEndX.current
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+    if (isLeftSwipe) {
+      handleNextFacility()
+    }
+    if (isRightSwipe) {
+      handlePrevFacility()
+    }
+    touchStartX.current = null
+    touchEndX.current = null
   }
 
   const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
@@ -955,7 +1034,11 @@ export default function OrganizationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Aktif Üyeler</p>
-                  <p className="text-4xl font-black text-green-600">{approvedMembers.length}</p>
+                  <p className="text-4xl font-black text-green-600">
+                    {organization?.owner?.plan === 'PREMIUM' 
+                      ? approvedMembers.length
+                      : `${approvedMembers.length}/10`}
+                  </p>
                 </div>
                 <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center">
                   <Users className="w-8 h-8 text-green-600" />
@@ -1023,77 +1106,188 @@ export default function OrganizationPage() {
 
         {/* Bekleyen Katılım İstekleri - Sadece yönetici görür */}
         {isOwner && pendingMembers.length > 0 && (
-          <Card className="mb-6 border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
-                Bekleyen Katılım İstekleri ({pendingMembers.length})
-              </CardTitle>
+          <Card className="mb-6 border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg overflow-hidden">
+            <CardHeader 
+              className="cursor-pointer hover:bg-yellow-100/50 transition-colors"
+              onClick={() => setPendingRequestsExpanded(!pendingRequestsExpanded)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
+                  <CardTitle className="text-2xl">
+                    Bekleyen Katılım İstekleri ({pendingMembers.length})
+                  </CardTitle>
+                </div>
+                <button
+                  className="p-2 hover:bg-yellow-200/50 rounded-lg transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPendingRequestsExpanded(!pendingRequestsExpanded)
+                  }}
+                >
+                  {pendingRequestsExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-yellow-700" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-yellow-700" />
+                  )}
+                </button>
+              </div>
               <CardDescription className="text-base">
                 Organizasyonunuza katılmak isteyen oyuncuların isteklerini onaylayın veya reddedin
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            {pendingRequestsExpanded && (
+              <CardContent className="animate-in slide-in-from-top-2 duration-200">
               <div className="space-y-3">
-                {pendingMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex justify-between items-center p-4 border-2 border-yellow-200 rounded-lg bg-white hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden flex-shrink-0">
-                        {member.user.avatarUrl ? (
-                          <img 
-                            src={member.user.avatarUrl} 
-                            alt={member.user.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          member.user.name.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 text-lg">{member.user.name}</p>
-                        <p className="text-sm text-gray-600">{member.user.email}</p>
-                        {member.user.phone && (
-                          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {member.user.phone}
-                          </p>
-                        )}
-                        <p className="text-xs text-yellow-600 mt-1 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(member.createdAt).toLocaleDateString('tr-TR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })} tarihinde istek gönderdi
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveMember(member.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                {pendingMembers.map((member) => {
+                  const isExpanded = expandedMembers.has(member.id)
+                  return (
+                    <div
+                      key={member.id}
+                      className="border-2 border-yellow-200 rounded-lg bg-white hover:shadow-md transition-all overflow-hidden"
+                    >
+                      {/* Collapse Header - Always Visible */}
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer"
+                        onClick={() => toggleMemberExpanded(member.id)}
                       >
-                        <Check className="w-4 h-4" />
-                        Onayla
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleRejectMember(member.id)}
-                        className="flex items-center gap-2"
-                      >
-                        <X className="w-4 h-4" />
-                        Reddet
-                      </Button>
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden flex-shrink-0">
+                            {member.user.avatarUrl ? (
+                              <img 
+                                src={member.user.avatarUrl} 
+                                alt={member.user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              member.user.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 text-lg">{member.user.name}</p>
+                            <p className="text-sm text-gray-600 truncate">{member.user.email}</p>
+                            <p className="text-xs text-yellow-600 mt-1 font-medium flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(member.createdAt).toLocaleDateString('tr-TR', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })} tarihinde istek gönderdi
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleApproveMember(member.id)
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                          >
+                            <Check className="w-4 h-4" />
+                            Onayla
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleRejectMember(member.id)
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <X className="w-4 h-4" />
+                            Reddet
+                          </Button>
+                          <button
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleMemberExpanded(member.id)
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-gray-600" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-gray-600" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Collapse Content - Expandable */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-2 border-t border-yellow-100 animate-in slide-in-from-top-2 duration-200">
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            {/* Telefon */}
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showPhone && member.user.phone 
+                                  ? member.user.phone 
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                            
+                            {/* Mevki */}
+                            <div className="flex items-center gap-1.5">
+                              <Target className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showPosition && member.user.position
+                                  ? member.user.position
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                            
+                            {/* Güçlü Ayak */}
+                            <div className="flex items-center gap-1.5">
+                              <Footprints className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showStrongFoot && member.user.strongFoot
+                                  ? member.user.strongFoot
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                            
+                            {/* Boy */}
+                            <div className="flex items-center gap-1.5">
+                              <Ruler className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showHeight && member.user.height
+                                  ? `${member.user.height} cm`
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                            
+                            {/* Kilo */}
+                            <div className="flex items-center gap-1.5">
+                              <Weight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showWeight && member.user.weight
+                                  ? `${member.user.weight} kg`
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                            
+                            {/* Yaş */}
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {member.user.showAge && member.user.age
+                                  ? `${member.user.age} yaş`
+                                  : 'Belirtilmedi'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
+            )}
           </Card>
         )}
 
@@ -1141,9 +1335,9 @@ export default function OrganizationPage() {
         )}
 
         {/* Maçlar ve Tesisler - Desktop'ta yan yana */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
           {/* Maçlar */}
-          <Card className="border-2 hover:shadow-lg transition-shadow">
+          <Card className="border-2 hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
@@ -1164,7 +1358,7 @@ export default function OrganizationPage() {
                 )}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               {(organization?.matches?.length || 0) === 0 ? (
                 <div className="text-center py-12">
                   <div className="mb-4 flex justify-center">
@@ -1244,7 +1438,7 @@ export default function OrganizationPage() {
           </Card>
 
           {/* Tesisler Listesi */}
-          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg h-fit">
+          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg h-full flex flex-col">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
@@ -1280,7 +1474,7 @@ export default function OrganizationPage() {
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1">
             {facilities.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mb-4 flex justify-center">
@@ -1317,39 +1511,202 @@ export default function OrganizationPage() {
                 )}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {facilities.map((facility) => (
-                  <div
-                    key={facility.id}
-                    className="p-4 border-2 border-blue-200 rounded-lg bg-white hover:border-blue-400 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-bold text-lg text-gray-900">{facility.name}</h3>
-                      <Building2 className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="space-y-2">
-                      <Link
-                        href={`/facilities/${facility.id}`}
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                          <polyline points="15 3 21 3 21 9"></polyline>
-                          <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
-                        Detayı Gör
-                      </Link>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    </div>
+              <div className="relative">
+                {/* 3D Carousel Container */}
+                <div 
+                  ref={carouselRef}
+                  className="relative h-[500px] overflow-hidden"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{ perspective: '1000px' }}
+                >
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    {facilities.length > 0 && facilities.map((facility, index) => {
+                      // Circular offset calculation
+                      let offset = index - currentFacilityIndex
+                      
+                      // Normalize offset for circular carousel (wrap around)
+                      const total = facilities.length
+                      if (offset > total / 2) {
+                        offset = offset - total
+                      } else if (offset < -total / 2) {
+                        offset = offset + total
+                      }
+                      
+                      const isActive = offset === 0
+                      const absOffset = Math.abs(offset)
+                      
+                      // Calculate position and scale based on circular offset
+                      let translateX = 0
+                      let translateZ = 0
+                      let scale = 0.6
+                      let opacity = 0.3
+                      
+                      if (isActive) {
+                        translateX = 0
+                        translateZ = 0
+                        scale = 1
+                        opacity = 1
+                      } else if (offset < 0) {
+                        // Left side - previous facilities (circular: last facility appears on left of first)
+                        translateX = -200
+                        translateZ = -100
+                        scale = 0.6
+                        opacity = 0.3
+                      } else if (offset > 0) {
+                        // Right side - next facilities (circular: first facility appears on right of last)
+                        translateX = 200
+                        translateZ = -100
+                        scale = 0.6
+                        opacity = 0.3
+                      }
+                      
+                      // Special handling for circular edges
+                      if (total > 1) {
+                        // When on first item, show last item on the left
+                        if (currentFacilityIndex === 0 && index === total - 1) {
+                          translateX = -200
+                          translateZ = -100
+                          scale = 0.6
+                          opacity = 0.3
+                        }
+                        // When on last item, show first item on the right
+                        if (currentFacilityIndex === total - 1 && index === 0) {
+                          translateX = 200
+                          translateZ = -100
+                          scale = 0.6
+                          opacity = 0.3
+                        }
+                      }
+                      
+                      return (
+                        <div
+                          key={facility.id}
+                          className="absolute transition-all duration-500 ease-in-out cursor-pointer"
+                          style={{
+                            transform: `translateX(${translateX}px) translateZ(${translateZ}px) scale(${scale})`,
+                            opacity: opacity,
+                            zIndex: isActive ? 10 : 5 - Math.abs(offset),
+                            pointerEvents: isActive ? 'auto' : 'none',
+                          }}
+                          onClick={() => isActive && router.push(`/facilities/${facility.id}`)}
+                        >
+                          <Link href={`/facilities/${facility.id}`}>
+                            <Card className="w-[350px] border-2 border-blue-200 bg-white hover:border-blue-400 hover:shadow-xl transition-all">
+                              <CardContent className="p-0">
+                                {/* Facility Image */}
+                                <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+                                  <img 
+                                    src="/images/facility.png" 
+                                    alt={facility.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {/* Indoor/Outdoor Badge */}
+                                  <div className="absolute top-3 right-3">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                      facility.isIndoor === true
+                                        ? 'bg-purple-100 text-purple-800 border-2 border-purple-300'
+                                        : facility.isIndoor === false
+                                        ? 'bg-green-100 text-green-800 border-2 border-green-300'
+                                        : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
+                                    }`}>
+                                      <Home className="w-3 h-3" />
+                                      {facility.isIndoor === true 
+                                        ? 'Kapalı Saha' 
+                                        : facility.isIndoor === false 
+                                        ? 'Açık Saha' 
+                                        : 'Belirtilmedi'}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {/* Facility Info */}
+                                <div className="p-5">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <h3 className="font-bold text-xl text-gray-900">{facility.name}</h3>
+                                    <Building2 className="w-6 h-6 text-blue-600 flex-shrink-0" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                                      <Calendar className="w-4 h-4" />
+                                      {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                      })}
+                                    </p>
+                                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                                      <Home className="w-4 h-4" />
+                                      Saha Tipi: {facility.isIndoor === true 
+                                        ? 'Kapalı Saha' 
+                                        : facility.isIndoor === false 
+                                        ? 'Açık Saha' 
+                                        : 'Belirtilmedi'}
+                                    </p>
+                                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                                      <DollarSign className="w-4 h-4" />
+                                      Maç Ücreti: {facility.matchPrice 
+                                        ? `${facility.matchPrice.toFixed(2)} TL` 
+                                        : 'Belirtilmedi'}
+                                    </p>
+                                    <div className="pt-2">
+                                      <Button 
+                                        variant="outline" 
+                                        className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold"
+                                      >
+                                        Detayı Gör
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Link>
+                        </div>
+                      )
+                    })}
                   </div>
-                ))}
+                </div>
+                
+                {/* Navigation Arrows */}
+                {facilities.length > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white border-2 shadow-lg"
+                      onClick={handlePrevFacility}
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white border-2 shadow-lg"
+                      onClick={handleNextFacility}
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </Button>
+                  </>
+                )}
+                
+                {/* Dots Indicator */}
+                {facilities.length > 1 && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {facilities.map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          index === currentFacilityIndex
+                            ? 'bg-blue-600 w-8'
+                            : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        onClick={() => setCurrentFacilityIndex(index)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

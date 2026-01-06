@@ -81,25 +81,8 @@ export async function POST(
       )
     }
 
-    // Get admin's plan
-    const admin = await prisma.user.findUnique({
-      where: { id: organization.ownerId },
-      select: { plan: true },
-    })
-
-    const adminPlan = admin?.plan || 'FREE'
-    const maxPlayers = adminPlan === 'FREE' ? 10 : 999999
-
-    // Check organization capacity (for FREE plan)
-    if (
-      adminPlan === 'FREE' &&
-      organization._count.members >= maxPlayers
-    ) {
-      return NextResponse.json(
-        { error: 'Organization has reached maximum capacity (10 players for FREE plan)' },
-        { status: 400 }
-      )
-    }
+    // Note: Organization capacity check is done when admin approves the request
+    // This allows admins to manage their members (remove/add) as needed
 
     // Create membership request
     const membership = await prisma.organizationMember.create({
