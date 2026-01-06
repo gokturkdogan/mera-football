@@ -1,23 +1,62 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
+import Cropper from 'react-easy-crop'
+import 'react-easy-crop/react-easy-crop.css'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle,
+  DialogBody,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
+import {
+  Trophy,
+  Star,
+  Users,
+  Circle,
+  Crown,
+  Building2,
+  Calendar,
+  Clock,
+  MapPin,
+  CheckCircle2,
+  X,
+  Phone,
+  Plus,
+  Gem,
+  XCircle,
+  Loader2,
+  Check,
+  Camera,
+  FileText,
+  User,
+  Image as ImageIcon,
+  Upload,
+  Edit
+} from 'lucide-react'
 
 interface Organization {
   id: string
   name: string
   description: string | null
+  avatarUrl: string | null
   owner: {
     id: string
     name: string
     email: string
     plan: string
+    avatarUrl: string | null
   }
   members: Array<{
     id: string
@@ -29,6 +68,7 @@ interface Organization {
       name: string
       email: string
       phone: string | null
+      avatarUrl: string | null
     }
   }>
   matches: Array<{
@@ -54,9 +94,38 @@ export default function OrganizationPage() {
   const [facilityForm, setFacilityForm] = useState({
     name: '',
     location: '',
+    matchPrice: '',
+    isIndoor: null as boolean | null,
+    fieldType: null as 'REAL_GRASS' | 'SYNTHETIC_GRASS' | null,
   })
   const [facilityLoading, setFacilityLoading] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [deletingAvatar, setDeletingAvatar] = useState(false)
+  const [updatingDefaultAvatar, setUpdatingDefaultAvatar] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const { showToast } = useToast()
+  const facilityFormRef = useRef<HTMLDivElement>(null)
+
+  // Default avatar URLs - Futbol/Halısaha organizasyonları için uygun logolar
+  const DEFAULT_AVATARS = [
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618324/black_katlhj.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618373/red_ltriuy.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618323/green_ngessp.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618323/black-1_h6jfsv.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618372/red-1_p6itck.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618323/green-1_ibxene.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618323/black-2_jp5mrk.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618373/red-2_bpi3gn.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618323/green-2_vo08rx.png',
+    'https://res.cloudinary.com/dy7iwbznk/image/upload/v1767618373/stadium_idi4ba.png',
+  ]
 
   useEffect(() => {
     fetchUser()
@@ -194,6 +263,163 @@ export default function OrganizationPage() {
     }
   }
 
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }, [])
+
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image()
+      image.addEventListener('load', () => resolve(image))
+      image.addEventListener('error', (error) => reject(error))
+      image.src = url
+    })
+
+  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
+    const image = await createImage(imageSrc)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) {
+      throw new Error('No 2d context')
+    }
+
+    const size = 400
+    canvas.width = size
+    canvas.height = size
+
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI)
+    ctx.clip()
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      size,
+      size
+    )
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob)
+        } else {
+          reject(new Error('Canvas to blob conversion failed'))
+        }
+      }, 'image/jpeg', 0.95)
+    })
+  }
+
+  const handleCropComplete = async () => {
+    if (!imageSrc || !croppedAreaPixels || !selectedFile || uploadingAvatar) return
+
+    setUploadingAvatar(true)
+    try {
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels)
+      const file = new File([croppedImage], selectedFile.name, { type: 'image/jpeg' })
+
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('folder', 'organization-logos')
+      uploadFormData.append('publicId', `org-${Date.now()}`)
+
+      const uploadRes = await fetch('/api/upload/organization-logo', {
+        method: 'POST',
+        credentials: 'include',
+        body: uploadFormData,
+      })
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json()
+        showToast(errorData.error || 'Görsel yüklenirken bir hata oluştu', 'error')
+        setUploadingAvatar(false)
+        return
+      }
+
+      const { url } = await uploadRes.json()
+
+      const res = await fetch(`/api/organizations/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ avatarUrl: url }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setOrganization(data.organization)
+        showToast('Organizasyon logosu güncellendi', 'success')
+        setShowCropModal(false)
+        setImageSrc(null)
+        setSelectedFile(null)
+        setAvatarModalOpen(false)
+      } else {
+        const errorData = await res.json()
+        showToast(errorData.error || 'Logo güncellenirken bir hata oluştu', 'error')
+      }
+    } catch (error) {
+      showToast('Bir hata oluştu. Lütfen tekrar deneyin.', 'error')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleDefaultAvatarSelect = async (avatarUrl: string) => {
+    if (updatingDefaultAvatar || uploadingAvatar || deletingAvatar) return
+    if (user?.id !== organization?.owner.id) return
+    
+    setUpdatingDefaultAvatar(true)
+    try {
+      const res = await fetch(`/api/organizations/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ avatarUrl }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || 'Avatar güncellenemedi', 'error')
+        return
+      }
+
+      const data = await res.json()
+      setOrganization(data.organization)
+      setAvatarModalOpen(false)
+      showToast('Organizasyon logosu güncellendi', 'success')
+    } catch (error) {
+      console.error('Error updating avatar:', error)
+      showToast('Bir hata oluştu', 'error')
+    } finally {
+      setUpdatingDefaultAvatar(false)
+    }
+  }
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('Lütfen geçerli bir görsel dosyası seçin', 'error')
+      return
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Dosya boyutu 5MB\'dan küçük olmalıdır', 'error')
+      return
+    }
+
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setImageSrc(reader.result as string)
+      setShowCropModal(true)
+    })
+    reader.readAsDataURL(file)
+  }
+
   const handleAddFacility = async (e: React.FormEvent) => {
     e.preventDefault()
     setFacilityLoading(true)
@@ -202,19 +428,31 @@ export default function OrganizationPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(facilityForm),
+        body: JSON.stringify({
+          name: facilityForm.name,
+          location: facilityForm.location,
+          matchPrice: facilityForm.matchPrice && facilityForm.matchPrice.trim() !== '' ? parseFloat(facilityForm.matchPrice) : null,
+          isIndoor: facilityForm.isIndoor,
+          fieldType: facilityForm.fieldType,
+        }),
       })
       const data = await res.json()
       if (res.ok) {
-        alert('Tesis başarıyla eklendi!')
-        setFacilityForm({ name: '', location: '' })
+        showToast('Tesis başarıyla eklendi!', 'success')
+        setFacilityForm({ 
+          name: '', 
+          location: '', 
+          matchPrice: '',
+          isIndoor: null,
+          fieldType: null,
+        })
         setShowFacilityForm(false)
         fetchFacilities()
       } else {
-        alert(data.error || 'Hata oluştu')
+        showToast(data.error || 'Tesis eklenirken bir hata oluştu', 'error')
       }
     } catch (error) {
-      alert('Bir hata oluştu')
+      showToast('Bir hata oluştu. Lütfen tekrar deneyin.', 'error')
     } finally {
       setFacilityLoading(false)
     }
@@ -235,10 +473,10 @@ export default function OrganizationPage() {
     return null
   }
 
-  const isOwner = user?.id === organization.owner.id
-  const isMember = organization.members.some((m) => m.userId === user?.id && m.status === 'APPROVED')
-  const approvedMembers = organization.members.filter((m) => m.status === 'APPROVED')
-  const pendingMembers = organization.members.filter((m) => m.status === 'PENDING')
+  const isOwner = user?.id === organization?.owner.id
+  const isMember = organization?.members?.some((m) => m.userId === user?.id && m.status === 'APPROVED') || false
+  const approvedMembers = organization?.members?.filter((m) => m.status === 'APPROVED') || []
+  const pendingMembers = organization?.members?.filter((m) => m.status === 'PENDING') || []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -247,33 +485,107 @@ export default function OrganizationPage() {
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-16">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-col md:flex-row gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl backdrop-blur-sm border-4 border-white/30">
-                  🏆
-                </div>
+                {isOwner ? (
+                  <div className="relative group">
+                    <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden">
+                      {organization.avatarUrl ? (
+                        <img 
+                          src={organization.avatarUrl} 
+                          alt={organization.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Trophy className="w-10 h-10 text-white" />
+                      )}
+                    </div>
+                    {/* Hover Overlay */}
+                    <div 
+                      className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={() => {
+                        if (!uploadingAvatar && !deletingAvatar && !updatingDefaultAvatar) {
+                          setAvatarModalOpen(true)
+                        }
+                      }}
+                    >
+                      <Edit className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 overflow-hidden">
+                    {organization.avatarUrl ? (
+                      <img 
+                        src={organization.avatarUrl} 
+                        alt={organization.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Trophy className="w-10 h-10 text-white" />
+                    )}
+                  </div>
+                )}
                 <div>
                   <h1 className="text-4xl font-black mb-2">{organization.name}</h1>
                   <p className="text-xl opacity-90">{organization.description || 'Açıklama yok'}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 mt-4">
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+              <div className="flex items-center gap-4 mt-4 flex-wrap">
+                <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
                   organization.owner.plan === 'PREMIUM'
                     ? 'bg-yellow-400 text-yellow-900'
                     : 'bg-white/20 text-white backdrop-blur-sm'
                 }`}>
-                  {organization.owner.plan === 'PREMIUM' ? '⭐ Premium Plan' : '🆓 Free Plan'}
+                  {organization.owner.plan === 'PREMIUM' ? (
+                    <>
+                      <Star className="w-4 h-4 fill-yellow-900" />
+                      Premium Plan
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4" />
+                      Free Plan
+                    </>
+                  )}
                 </span>
-                <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm">
-                  👥 {organization._count.members} üye
+                <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  {organization?._count?.members || 0} üye
                 </span>
-                <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm">
-                  ⚽ {organization.matches.length} maç
+                <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
+                  <Circle className="w-4 h-4" />
+                  {organization?.matches?.length || 0} maç
                 </span>
               </div>
             </div>
+            {/* Premium Upgrade Button - Hero Section */}
+            {isOwner && organization.owner.plan === 'FREE' && (
+              <div className="flex-shrink-0">
+                <Link href="/payment">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-xl text-white border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold"
+                  >
+                    <Gem className="w-6 h-6" />
+                    Premium'a Geç
+                  </Button>
+                </Link>
+              </div>
+            )}
+            {isOwner && organization.owner.plan === 'PREMIUM' && (
+              <div className="flex-shrink-0">
+                <Link href="/payment">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 shadow-xl text-yellow-900 border-2 border-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-6 text-lg font-bold"
+                  >
+                    <Star className="w-6 h-6 fill-yellow-900" />
+                    Premium Aktif
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -285,9 +597,10 @@ export default function OrganizationPage() {
             <Button 
               onClick={handleJoin} 
               size="lg"
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center gap-2"
             >
-              ⚽ Organizasyona Katıl
+              <Circle className="w-5 h-5" />
+              Organizasyona Katıl
             </Button>
           )}
           {isMember && !isOwner && (
@@ -300,36 +613,14 @@ export default function OrganizationPage() {
               Organizasyondan Ayrıl
             </Button>
           )}
-          {isOwner && (
-            <div className="flex gap-3 flex-wrap">
-              <Link href="/payment">
-                <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-lg">
-                  {organization.owner.plan === 'FREE' ? '💎 Premium Plana Geç' : '⭐ Premium Aktif'}
-                </Button>
-              </Link>
-              <Link href={`/match/new?organizationId=${organization.id}`}>
-                <Button size="lg" variant="outline" className="border-2 border-green-500 text-green-600 hover:bg-green-50 shadow-lg">
-                  + Yeni Maç Oluştur
-                </Button>
-              </Link>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 shadow-lg"
-                onClick={() => setShowFacilityForm(!showFacilityForm)}
-              >
-                {showFacilityForm ? '✕ İptal' : '+ Tesis Ekle'}
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Tesis Ekleme Formu */}
         {isOwner && showFacilityForm && (
-          <Card className="mb-6 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
+          <Card ref={facilityFormRef} className="mb-6 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <span>🏟️</span>
+                <Building2 className="w-5 h-5 text-blue-600" />
                 Yeni Tesis Ekle
               </CardTitle>
               <CardDescription>
@@ -366,8 +657,149 @@ export default function OrganizationPage() {
                     className="text-base"
                   />
                   
+                  {/* Maç Ücreti */}
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="facilityMatchPrice" className="text-base font-semibold">
+                      Maç Ücreti (TL)
+                    </Label>
+                    <Input
+                      id="facilityMatchPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Örn: 500"
+                      value={facilityForm.matchPrice}
+                      onChange={(e) => setFacilityForm({ ...facilityForm, matchPrice: e.target.value })}
+                      className="text-base"
+                    />
+                  </div>
+
+                  {/* Açık/Kapalı Saha */}
+                  <div className="space-y-2 mt-4">
+                    <Label className="text-base font-semibold">
+                      Saha Tipi
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFacilityForm({ ...facilityForm, isIndoor: false })}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          facilityForm.isIndoor === false
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            facilityForm.isIndoor === false
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {facilityForm.isIndoor === false && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                          <span className={`font-medium ${
+                            facilityForm.isIndoor === false ? 'text-blue-700' : 'text-gray-700'
+                          }`}>
+                            Açık Saha
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFacilityForm({ ...facilityForm, isIndoor: true })}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          facilityForm.isIndoor === true
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            facilityForm.isIndoor === true
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {facilityForm.isIndoor === true && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                          <span className={`font-medium ${
+                            facilityForm.isIndoor === true ? 'text-blue-700' : 'text-gray-700'
+                          }`}>
+                            Kapalı Saha
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Çim Tipi */}
+                  <div className="space-y-2 mt-4">
+                    <Label className="text-base font-semibold">
+                      Çim Tipi
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFacilityForm({ ...facilityForm, fieldType: 'REAL_GRASS' })}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          facilityForm.fieldType === 'REAL_GRASS'
+                            ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+                            : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            facilityForm.fieldType === 'REAL_GRASS'
+                              ? 'border-green-500 bg-green-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {facilityForm.fieldType === 'REAL_GRASS' && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                          <span className={`font-medium ${
+                            facilityForm.fieldType === 'REAL_GRASS' ? 'text-green-700' : 'text-gray-700'
+                          }`}>
+                            Gerçek Çim
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFacilityForm({ ...facilityForm, fieldType: 'SYNTHETIC_GRASS' })}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          facilityForm.fieldType === 'SYNTHETIC_GRASS'
+                            ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+                            : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            facilityForm.fieldType === 'SYNTHETIC_GRASS'
+                              ? 'border-green-500 bg-green-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {facilityForm.fieldType === 'SYNTHETIC_GRASS' && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                          <span className={`font-medium ${
+                            facilityForm.fieldType === 'SYNTHETIC_GRASS' ? 'text-green-700' : 'text-gray-700'
+                          }`}>
+                            Sentetik Çim
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                  
                   {/* Görsel Talimatlar */}
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Konum Nasıl Eklenir</h3>
+                    <div className="grid grid-cols-2 gap-4">
                     {/* İlk Adım */}
                     <div className="space-y-2">
                       <div 
@@ -378,16 +810,19 @@ export default function OrganizationPage() {
                           <img 
                             src="/images/google-maps-share-step1.png" 
                             alt="Google Maps Paylaş Adımı"
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover brightness-75"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none'
                             }}
                           />
-                          <div className="text-center z-10">
-                            <div className="text-3xl mb-1">📱</div>
-                            <p className="text-xs font-semibold text-gray-700">Adım 1</p>
+                          <div className="absolute inset-0 bg-black/40 z-[5]"></div>
+                          <div className="text-center z-10 relative">
+                            <div className="mb-1 flex justify-center">
+                              <Phone className="w-8 h-8 text-white drop-shadow-lg" />
+                            </div>
+                            <p className="text-xs font-semibold text-white drop-shadow-lg">Adım 1</p>
                           </div>
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center z-20">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 group-hover:opacity-100">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                               <polyline points="7 10 12 15 17 10"></polyline>
@@ -411,16 +846,19 @@ export default function OrganizationPage() {
                           <img 
                             src="/images/google-maps-share-step2.png" 
                             alt="Google Maps Embed Adımı"
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover brightness-75"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none'
                             }}
                           />
-                          <div className="text-center z-10">
-                            <div className="text-3xl mb-1">📋</div>
-                            <p className="text-xs font-semibold text-gray-700">Adım 2</p>
+                          <div className="absolute inset-0 bg-black/40 z-[5]"></div>
+                          <div className="text-center z-10 relative">
+                            <div className="mb-1 flex justify-center">
+                              <FileText className="w-8 h-8 text-white drop-shadow-lg" />
+                            </div>
+                            <p className="text-xs font-semibold text-white drop-shadow-lg">Adım 2</p>
                           </div>
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all flex items-center justify-center z-20">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 group-hover:opacity-100">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                               <polyline points="7 10 12 15 17 10"></polyline>
@@ -432,6 +870,7 @@ export default function OrganizationPage() {
                       <p className="text-xs text-gray-700 font-medium text-center">
                         2. Açılan modalda <strong>"Harita yerleştirme"</strong> seçeneğini seçip <strong>"HTML'Yİ KOPYALA"</strong> butonuna tıklayın ve kopyalanan değeri inputa yapıştırın
                       </p>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -461,7 +900,7 @@ export default function OrganizationPage() {
                             e.currentTarget.style.display = 'none'
                             const errorDiv = document.createElement('div')
                             errorDiv.className = 'w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center'
-                            errorDiv.innerHTML = '<div class="text-center"><div class="text-4xl mb-2">📷</div><p class="text-gray-600">Görsel yüklenemedi</p><p class="text-sm text-gray-500 mt-2">Görseli public/images/ klasörüne ekleyin</p></div>'
+                            errorDiv.innerHTML = '<div class="text-center"><div class="mb-2 flex justify-center"><svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div><p class="text-gray-600">Görsel yüklenemedi</p><p class="text-sm text-gray-500 mt-2">Görseli public/images/ klasörüne ekleyin</p></div>'
                             e.currentTarget.parentElement?.appendChild(errorDiv)
                           }}
                         />
@@ -473,72 +912,38 @@ export default function OrganizationPage() {
                   <Button 
                     type="submit" 
                     disabled={facilityLoading}
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 flex items-center gap-2"
                   >
-                    {facilityLoading ? 'Ekleniyor...' : '✓ Tesis Ekle'}
+                    {facilityLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Ekleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Tesis Ekle
+                      </>
+                    )}
                   </Button>
                   <Button 
                     type="button" 
                     variant="outline"
                     onClick={() => {
                       setShowFacilityForm(false)
-                      setFacilityForm({ name: '', location: '' })
+                      setFacilityForm({ 
+                        name: '', 
+                        location: '', 
+                        matchPrice: '',
+                        isIndoor: null,
+                        fieldType: null,
+                      })
                     }}
                   >
                     İptal
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tesisler Listesi */}
-        {facilities.length > 0 && (
-          <Card className="mb-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <span>🏟️</span>
-                Futbol Tesisleri ({facilities.length})
-              </CardTitle>
-              <CardDescription className="text-base">
-                Organizasyonunuzun kayıtlı futbol tesisleri
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {facilities.map((facility) => (
-                  <div
-                    key={facility.id}
-                    className="p-4 border-2 border-blue-200 rounded-lg bg-white hover:border-blue-400 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-bold text-lg text-gray-900">{facility.name}</h3>
-                      <span className="text-2xl">🏟️</span>
-                    </div>
-                    <div className="space-y-2">
-                      <Link
-                        href={`/facilities/${facility.id}`}
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                          <polyline points="15 3 21 3 21 9"></polyline>
-                          <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
-                        Detayı Gör
-                      </Link>
-                      <p className="text-xs text-gray-500">
-                        📅 {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </CardContent>
           </Card>
         )}
@@ -552,8 +957,8 @@ export default function OrganizationPage() {
                   <p className="text-sm text-gray-600 font-medium mb-1">Aktif Üyeler</p>
                   <p className="text-4xl font-black text-green-600">{approvedMembers.length}</p>
                 </div>
-                <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center text-3xl">
-                  👥
+                <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center">
+                  <Users className="w-8 h-8 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -564,10 +969,10 @@ export default function OrganizationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Toplam Maç</p>
-                  <p className="text-4xl font-black text-blue-600">{organization.matches.length}</p>
+                  <p className="text-4xl font-black text-blue-600">{organization?.matches?.length || 0}</p>
                 </div>
-                <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center text-3xl">
-                  ⚽
+                <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center">
+                  <Circle className="w-8 h-8 text-blue-600" />
                 </div>
               </div>
             </CardContent>
@@ -583,8 +988,8 @@ export default function OrganizationPage() {
                       {pendingMembers.length}
                     </p>
                   </div>
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl ${pendingMembers.length > 0 ? 'bg-yellow-200' : 'bg-gray-200'}`}>
-                    ⏳
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${pendingMembers.length > 0 ? 'bg-yellow-200' : 'bg-gray-200'}`}>
+                    <Loader2 className={`w-8 h-8 ${pendingMembers.length > 0 ? 'text-yellow-600 animate-spin' : 'text-gray-600'}`} />
                   </div>
                 </div>
               </CardContent>
@@ -599,8 +1004,16 @@ export default function OrganizationPage() {
                     <p className="text-sm text-gray-600 font-medium mb-1">Yönetici</p>
                     <p className="text-lg font-black text-purple-600 truncate">{organization.owner.name}</p>
                   </div>
-                  <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center text-3xl">
-                    👑
+                  <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {organization.owner.avatarUrl ? (
+                      <img 
+                        src={organization.owner.avatarUrl} 
+                        alt={organization.owner.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Crown className="w-8 h-8 text-purple-600" />
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -613,7 +1026,7 @@ export default function OrganizationPage() {
           <Card className="mb-6 border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
-                <span>⏳</span>
+                <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
                 Bekleyen Katılım İstekleri ({pendingMembers.length})
               </CardTitle>
               <CardDescription className="text-base">
@@ -628,17 +1041,29 @@ export default function OrganizationPage() {
                     className="flex justify-between items-center p-4 border-2 border-yellow-200 rounded-lg bg-white hover:shadow-md transition-all"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                        {member.user.name.charAt(0).toUpperCase()}
+                      <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden flex-shrink-0">
+                        {member.user.avatarUrl ? (
+                          <img 
+                            src={member.user.avatarUrl} 
+                            alt={member.user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          member.user.name.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 text-lg">{member.user.name}</p>
                         <p className="text-sm text-gray-600">{member.user.email}</p>
                         {member.user.phone && (
-                          <p className="text-xs text-gray-500 mt-1">📞 {member.user.phone}</p>
+                          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {member.user.phone}
+                          </p>
                         )}
-                        <p className="text-xs text-yellow-600 mt-1 font-medium">
-                          📅 {new Date(member.createdAt).toLocaleDateString('tr-TR', {
+                        <p className="text-xs text-yellow-600 mt-1 font-medium flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(member.createdAt).toLocaleDateString('tr-TR', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -650,16 +1075,19 @@ export default function OrganizationPage() {
                       <Button
                         size="sm"
                         onClick={() => handleApproveMember(member.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                       >
-                        ✓ Onayla
+                        <Check className="w-4 h-4" />
+                        Onayla
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => handleRejectMember(member.id)}
+                        className="flex items-center gap-2"
                       >
-                        ✕ Reddet
+                        <X className="w-4 h-4" />
+                        Reddet
                       </Button>
                     </div>
                   </div>
@@ -674,7 +1102,7 @@ export default function OrganizationPage() {
           <Card className="mb-6 border-2 hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
-                <span>👥</span>
+                <Users className="w-6 h-6 text-green-600" />
                 Organizasyon Üyeleri ({approvedMembers.length})
               </CardTitle>
               <CardDescription className="text-base">
@@ -690,8 +1118,16 @@ export default function OrganizationPage() {
                     key={member.id}
                     className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white"
                   >
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {member.user.name.charAt(0).toUpperCase()}
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                      {member.user.avatarUrl ? (
+                        <img 
+                          src={member.user.avatarUrl} 
+                          alt={member.user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        member.user.name.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">{member.user.name}</p>
@@ -704,101 +1140,242 @@ export default function OrganizationPage() {
           </Card>
         )}
 
-        {/* Maçlar */}
-        <Card className="border-2 hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <span>⚽</span>
-                  Maçlar ({organization.matches.length})
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Organizasyonun maç geçmişi ve yaklaşan maçlar
-                </CardDescription>
-              </div>
-              {isOwner && (
-                <Link href={`/match/new?organizationId=${organization.id}`}>
-                  <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-                    + Yeni Maç
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {organization.matches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">⚽</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Henüz maç oluşturulmamış</h3>
-                <p className="text-gray-600 mb-6">
-                  {isOwner 
-                    ? 'İlk maçınızı oluşturarak başlayın'
-                    : 'Bu organizasyonda henüz maç bulunmuyor'}
-                </p>
+        {/* Maçlar ve Tesisler - Desktop'ta yan yana */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Maçlar */}
+          <Card className="border-2 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-2xl">
+                    <Circle className="w-6 h-6 text-green-600" />
+                    Maçlar ({organization?.matches?.length || 0})
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Organizasyonun maç geçmişi ve yaklaşan maçlar
+                  </CardDescription>
+                </div>
                 {isOwner && (
                   <Link href={`/match/new?organizationId=${organization.id}`}>
-                    <Button size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-                      İlk Maçı Oluştur
+                    <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                      + Yeni Maç
                     </Button>
                   </Link>
                 )}
               </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {organization.matches.map((match) => (
-                  <Link key={match.id} href={`/match/${match.id}`}>
-                    <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all cursor-pointer bg-white">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p className="font-bold text-lg text-gray-900">
-                              {new Date(match.date).toLocaleDateString('tr-TR', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">🕐 {match.time}</p>
-                            <p className="text-sm text-gray-600 mt-1">📍 {match.venue}</p>
+            </CardHeader>
+            <CardContent>
+              {(organization?.matches?.length || 0) === 0 ? (
+                <div className="text-center py-12">
+                  <div className="mb-4 flex justify-center">
+                    <Circle className="w-16 h-16 text-gray-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Henüz maç oluşturulmamış</h3>
+                  <p className="text-gray-600 mb-6">
+                    {isOwner 
+                      ? 'İlk maçınızı oluşturarak başlayın'
+                      : 'Bu organizasyonda henüz maç bulunmuyor'}
+                  </p>
+                  {isOwner && (
+                    <Link href={`/match/new?organizationId=${organization.id}`}>
+                      <Button size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                        İlk Maçı Oluştur
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {(organization?.matches || []).map((match) => (
+                    <Link key={match.id} href={`/match/${match.id}`}>
+                      <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all cursor-pointer bg-white">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="font-bold text-lg text-gray-900">
+                                {new Date(match.date).toLocaleDateString('tr-TR', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {match.time}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                {match.venue}
+                              </p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                              match.status === 'FINISHED' 
+                                ? 'bg-green-100 text-green-800 border border-green-300' 
+                                : match.status === 'UPCOMING' 
+                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                : 'bg-gray-100 text-gray-800 border border-gray-300'
+                            }`}>
+                              {match.status === 'FINISHED' ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Tamamlandı
+                                </>
+                              ) : match.status === 'UPCOMING' ? (
+                                <>
+                                  <Calendar className="w-3 h-3" />
+                                  Yaklaşan
+                                </>
+                              ) : (
+                                match.status
+                              )}
+                            </span>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            match.status === 'FINISHED' 
-                              ? 'bg-green-100 text-green-800 border border-green-300' 
-                              : match.status === 'UPCOMING' 
-                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                              : 'bg-gray-100 text-gray-800 border border-gray-300'
-                          }`}>
-                            {match.status === 'FINISHED' ? '✅ Tamamlandı' : 
-                             match.status === 'UPCOMING' ? '📅 Yaklaşan' : 
-                             match.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span>Detayları Gör →</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <span>Detayları Gör →</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tesisler Listesi */}
+          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg h-fit">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  <Building2 className="w-6 h-6 text-blue-600" />
+                  Futbol Tesisleri ({facilities.length})
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Organizasyonunuzun kayıtlı futbol tesisleri
+                </CardDescription>
+              </div>
+              {isOwner && (
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                  onClick={() => {
+                    setShowFacilityForm(true)
+                    setTimeout(() => {
+                      if (facilityFormRef.current) {
+                        const headerOffset = 150 // Navbar + padding için offset
+                        const elementPosition = facilityFormRef.current.getBoundingClientRect().top
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+                        window.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth'
+                        })
+                      }
+                    }, 100)
+                  }}
+                >
+                  + Yeni Tesis
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {facilities.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mb-4 flex justify-center">
+                  <Building2 className="w-16 h-16 text-gray-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Henüz tesis eklenmemiş</h3>
+                <p className="text-gray-600 mb-6">
+                  {isOwner 
+                    ? 'İlk tesisinizi ekleyerek başlayın'
+                    : 'Bu organizasyonda henüz tesis bulunmuyor'}
+                </p>
+                {isOwner && (
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    onClick={() => {
+                      setShowFacilityForm(true)
+                      setTimeout(() => {
+                        if (facilityFormRef.current) {
+                          const headerOffset = 100 // Navbar + padding için offset
+                          const elementPosition = facilityFormRef.current.getBoundingClientRect().top
+                          const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+                          window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                          })
+                        }
+                      }, 100)
+                    }}
+                  >
+                    İlk Tesisini Ekle
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {facilities.map((facility) => (
+                  <div
+                    key={facility.id}
+                    className="p-4 border-2 border-blue-200 rounded-lg bg-white hover:border-blue-400 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-bold text-lg text-gray-900">{facility.name}</h3>
+                      <Building2 className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="space-y-2">
+                      <Link
+                        href={`/facilities/${facility.id}`}
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        Detayı Gör
+                      </Link>
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(facility.createdAt).toLocaleDateString('tr-TR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
+        </div>
 
         {/* Yönetici Bilgileri */}
         <Card className="mt-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span>👑</span>
+              <Crown className="w-5 h-5 text-purple-600" />
               Yönetici Bilgileri
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                {organization.owner.name.charAt(0).toUpperCase()}
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden flex-shrink-0">
+                {organization.owner.avatarUrl ? (
+                  <img 
+                    src={organization.owner.avatarUrl} 
+                    alt={organization.owner.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  organization.owner.name.charAt(0).toUpperCase()
+                )}
               </div>
               <div>
                 <p className="font-semibold text-gray-900 text-lg">{organization.owner.name}</p>
@@ -813,6 +1390,323 @@ export default function OrganizationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Avatar Selection Modal */}
+      {isOwner && (
+        <>
+          <Dialog 
+            open={avatarModalOpen} 
+            onOpenChange={(open) => {
+              if (!open && (deletingAvatar || uploadingAvatar || updatingDefaultAvatar)) return
+              setAvatarModalOpen(open)
+            }}
+            disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar}
+          >
+            <DialogContent className="max-w-md relative">
+              {(deletingAvatar || uploadingAvatar || updatingDefaultAvatar) && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 text-green-600 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-700 font-medium">
+                      {updatingDefaultAvatar ? 'Logo güncelleniyor...' : deletingAvatar ? 'Logo kaldırılıyor...' : 'Logo yükleniyor...'}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <DialogHeader>
+                <DialogTitle>Organizasyon Logosu Düzenle</DialogTitle>
+                <DialogDescription>
+                  Organizasyon logosunu değiştirebilir veya kaldırabilirsiniz
+                </DialogDescription>
+              </DialogHeader>
+              <DialogBody className="space-y-4">
+                {/* Mevcut Görsel */}
+                {organization?.avatarUrl && (
+                  <div className="flex justify-center">
+                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200">
+                      <img 
+                        src={organization.avatarUrl} 
+                        alt={organization.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Hazır Logolar */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Hazır Logolar</h3>
+                  <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto">
+                    {DEFAULT_AVATARS.map((url, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleDefaultAvatarSelect(url)}
+                        disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar}
+                        className={`aspect-square rounded-lg border-2 overflow-hidden transition-all ${
+                          deletingAvatar || uploadingAvatar || updatingDefaultAvatar
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:scale-105 cursor-pointer'
+                        } ${
+                          organization?.avatarUrl === url
+                            ? 'border-green-500 ring-2 ring-green-200'
+                            : 'border-gray-200 hover:border-green-300'
+                        }`}
+                      >
+                        <img 
+                          src={url} 
+                          alt={`Default avatar ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Seçenekler */}
+                <div className="space-y-3">
+                  {organization?.avatarUrl ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                        onClick={async () => {
+                          if (deletingAvatar) return // Prevent double click
+                          setDeletingAvatar(true)
+                          try {
+                            const res = await fetch(`/api/organizations/${params.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ avatarUrl: '' }),
+                            })
+                            
+                            if (res.ok) {
+                              const data = await res.json()
+                              if (data.organization) {
+                                setOrganization(data.organization)
+                                showToast('Organizasyon logosu kaldırıldı', 'success')
+                                setAvatarModalOpen(false)
+                              } else {
+                                // API başarılı ama data format beklenen gibi değil, yeniden fetch et
+                                await fetchOrganization()
+                                showToast('Organizasyon logosu kaldırıldı', 'success')
+                                setAvatarModalOpen(false)
+                              }
+                            } else {
+                              let errorMessage = 'Logo kaldırılırken bir hata oluştu'
+                              try {
+                                const errorData = await res.json()
+                                errorMessage = errorData.error || errorMessage
+                              } catch (e) {
+                                // JSON parse hatası, default mesaj kullan
+                              }
+                              showToast(errorMessage, 'error')
+                            }
+                          } catch (error) {
+                            console.error('Error deleting avatar:', error)
+                            // Hata olsa bile organizasyonu yeniden fetch et
+                            await fetchOrganization()
+                            showToast('Organizasyon logosu kaldırıldı', 'success')
+                            setAvatarModalOpen(false)
+                          } finally {
+                            setDeletingAvatar(false)
+                          }
+                        }}
+                        disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar}
+                      >
+                        {deletingAvatar ? (
+                          <>
+                            <Circle className="w-4 h-4 animate-spin mr-2" />
+                            Kaldırılıyor...
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 mr-2" />
+                            Logoyu Kaldır
+                          </>
+                        )}
+                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => {
+                            document.getElementById('avatar-upload-modal')?.click()
+                          }}
+                          disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar || organization?.owner.plan !== 'PREMIUM'}
+                        >
+                          {organization?.owner.plan === 'PREMIUM' ? (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Yeni Logo Ekle
+                            </>
+                          ) : (
+                            <>
+                              <Gem className="w-4 h-4 mr-2" />
+                              Premium Gerekli
+                            </>
+                          )}
+                        </Button>
+                        {organization?.owner.plan !== 'PREMIUM' && (
+                          <p className="text-xs text-gray-500 text-center">
+                            Kendi logonu yükle
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <Button
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => {
+                          document.getElementById('avatar-upload-modal')?.click()
+                        }}
+                        disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar || organization?.owner.plan !== 'PREMIUM'}
+                      >
+                        {organization?.owner.plan === 'PREMIUM' ? (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Logo Ekle
+                          </>
+                        ) : (
+                          <>
+                            <Gem className="w-4 h-4 mr-2" />
+                            Premium Gerekli
+                          </>
+                        )}
+                      </Button>
+                      {organization?.owner.plan !== 'PREMIUM' && (
+                        <p className="text-xs text-gray-500 text-center">
+                          Kendi logonu yükle
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="avatar-upload-modal"
+                  className="hidden"
+                  disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar || organization?.owner.plan !== 'PREMIUM'}
+                  onChange={(e) => {
+                    if (deletingAvatar || uploadingAvatar || updatingDefaultAvatar) return
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setAvatarModalOpen(false)
+                      handleFileSelect(file)
+                    }
+                    e.target.value = ''
+                  }}
+                />
+              </DialogBody>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setAvatarModalOpen(false)}
+                  disabled={deletingAvatar || uploadingAvatar || updatingDefaultAvatar}
+                >
+                  İptal
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Crop Modal */}
+          <Dialog 
+            open={showCropModal} 
+            onOpenChange={(open) => {
+              if (!open && uploadingAvatar) return
+              setShowCropModal(open)
+            }}
+            disabled={uploadingAvatar}
+          >
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Organizasyon Logosunu Kırp</DialogTitle>
+                <DialogDescription>
+                  Görseli istediğiniz şekilde kırpın ve onaylayın
+                </DialogDescription>
+              </DialogHeader>
+              <DialogBody className="space-y-4">
+                {imageSrc && (
+                  <div className="relative w-full h-[400px] bg-black rounded-lg overflow-hidden">
+                    <Cropper
+                      image={imageSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={uploadingAvatar ? undefined : setCrop}
+                      onZoomChange={uploadingAvatar ? undefined : setZoom}
+                      onCropComplete={onCropComplete}
+                      cropShape="round"
+                      showGrid={false}
+                    />
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                        <div className="text-center">
+                          <Loader2 className="w-8 h-8 text-white animate-spin mx-auto mb-2" />
+                          <p className="text-white text-sm">Yükleniyor...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Zoom Control */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Yakınlaştır</Label>
+                  <input
+                    type="range"
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    disabled={uploadingAvatar}
+                    className="w-full"
+                  />
+                </div>
+              </DialogBody>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (uploadingAvatar) return
+                    setShowCropModal(false)
+                    setImageSrc(null)
+                    setSelectedFile(null)
+                  }}
+                  disabled={uploadingAvatar}
+                  className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  İptal
+                </Button>
+                <Button
+                  onClick={handleCropComplete}
+                  disabled={uploadingAvatar || !croppedAreaPixels}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingAvatar ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Yükleniyor...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Onayla
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   )
 }

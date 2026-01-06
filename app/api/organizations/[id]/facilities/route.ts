@@ -5,10 +5,16 @@ import { z } from 'zod'
 
 const createFacilitySchema = z.object({
   name: z.string().min(1, 'Tesis adı gereklidir'),
-  location: z.string().url('Geçerli bir Google Maps linki giriniz').refine(
-    (url) => url.includes('google.com') || url.includes('maps.google') || url.includes('share.google'),
-    'Google Maps paylaşım linki giriniz'
+  location: z.string().min(1, 'Konum gereklidir').refine(
+    (value) => {
+      // Sadece iframe HTML'i kontrolü
+      return value.includes('<iframe') && value.includes('google.com/maps/embed')
+    },
+    'Geçerli bir Google Maps embed iframe HTML giriniz'
   ),
+  matchPrice: z.number().min(0, 'Maç ücreti 0 veya pozitif olmalıdır').optional().nullable(),
+  isIndoor: z.boolean().optional().nullable(),
+  fieldType: z.enum(['REAL_GRASS', 'SYNTHETIC_GRASS']).optional().nullable(),
 })
 
 // GET - Get all facilities for an organization
@@ -105,6 +111,9 @@ export async function POST(
       data: {
         name: validatedData.name,
         location: validatedData.location,
+        matchPrice: validatedData.matchPrice ?? null,
+        isIndoor: validatedData.isIndoor ?? null,
+        fieldType: validatedData.fieldType ?? null,
         organizationId: params.id,
       },
     })

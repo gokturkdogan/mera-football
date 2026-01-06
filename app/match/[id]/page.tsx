@@ -322,7 +322,11 @@ export default function MatchPage() {
   }
 
   // Extract map embed URL from iframe HTML or use directly if it's already a URL
-  const getMapEmbedUrl = (locationData: string): string => {
+  const getMapEmbedUrl = (locationData: string | null | undefined): string => {
+    if (!locationData) {
+      return ''
+    }
+    
     // If it's a full iframe HTML, extract the src URL
     if (locationData.includes('<iframe')) {
       const srcMatch = locationData.match(/src=["']([^"']+)["']/i)
@@ -1133,16 +1137,25 @@ export default function MatchPage() {
                           </p>
                         </div>
                         <div className="w-full h-64 rounded-lg overflow-hidden border-2 border-gray-300 bg-gray-100">
-                          <iframe
-                            src={getMapEmbedUrl(selectedFacility.location)}
-                            width="100%"
-                            height="100%"
-                            style={{ border: 0 }}
-                            allowFullScreen
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                            className="w-full h-full"
-                          ></iframe>
+                          {selectedFacility?.location ? (
+                            <iframe
+                              src={getMapEmbedUrl(selectedFacility.location)}
+                              width="100%"
+                              height="100%"
+                              style={{ border: 0 }}
+                              allowFullScreen
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                              className="w-full h-full"
+                              onError={(e) => {
+                                console.error('Iframe load error:', e)
+                              }}
+                            ></iframe>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-500">
+                              Harita yükleniyor...
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

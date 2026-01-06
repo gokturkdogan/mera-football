@@ -215,6 +215,9 @@ model Facility {
   id              String        @id @default(cuid())
   name            String
   location        String        // Google Maps share link
+  matchPrice      Float?        // Maç ücreti (TL)
+  isIndoor        Boolean?      // true = Kapalı saha, false = Açık saha
+  fieldType       String?       // "REAL_GRASS" veya "SYNTHETIC_GRASS"
   organizationId  String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
