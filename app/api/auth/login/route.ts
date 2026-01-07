@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = loginSchema.parse(body)
 
-    // Find user
+    // Find user 
     const user = await prisma.user.findUnique({
       where: { email: validatedData.email },
     })
