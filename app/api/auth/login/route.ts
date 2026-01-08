@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = loginSchema.parse(body)
 
-    // Find user 
     const user = await prisma.user.findUnique({
       where: { email: validatedData.email },
     })
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify password
     const isValidPassword = await comparePassword(
       validatedData.password,
       user.password
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check JWT_SECRET
     if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key') {
       console.error('JWT_SECRET is not properly configured')
       return NextResponse.json(
@@ -47,7 +44,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate token
     const token = generateToken({
       userId: user.id,
       email: user.email,
@@ -61,7 +57,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Set cookie
     const response = NextResponse.json({
       user: {
         id: user.id,
