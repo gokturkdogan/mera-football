@@ -87,7 +87,6 @@ export async function GET(
   }
 }
 
-// PATCH - Approve/Reject member request (admin only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -117,7 +116,6 @@ export async function PATCH(
       status: z.enum(['APPROVED', 'REJECTED']),
     }).parse(body)
 
-    // Check if user is owner
     const organization = await prisma.organization.findUnique({
       where: { id: params.id },
     })
@@ -129,9 +127,7 @@ export async function PATCH(
       )
     }
 
-    // Check organization capacity if approving
     if (status === 'APPROVED') {
-      // Get admin's plan
       const admin = await prisma.user.findUnique({
         where: { id: organization.ownerId },
         select: { plan: true },
