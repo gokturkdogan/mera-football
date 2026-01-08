@@ -7,7 +7,7 @@ const createFacilitySchema = z.object({
   name: z.string().min(1, 'Tesis adı gereklidir'),
   location: z.string().min(1, 'Konum gereklidir').refine(
     (value) => {
-      // Sadece iframe HTML'i kontrolü
+
       return value.includes('<iframe') && value.includes('google.com/maps/embed')
     },
     'Geçerli bir Google Maps embed iframe HTML giriniz'
@@ -17,7 +17,6 @@ const createFacilitySchema = z.object({
   fieldType: z.enum(['REAL_GRASS', 'SYNTHETIC_GRASS']).optional().nullable(),
 })
 
-// GET - Get all facilities for an organization
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -60,7 +59,6 @@ export async function GET(
   }
 }
 
-// POST - Create a new facility
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
