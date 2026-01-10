@@ -28,10 +28,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
     const hashedPassword = await hashPassword(validatedData.password)
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
