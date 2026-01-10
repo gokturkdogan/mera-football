@@ -81,7 +81,7 @@ export async function POST(
     const body = await request.json()
     const validatedData = scoreSchema.parse(body)
 
-    // Check if match exists and user is owner
+
     const match = await prisma.match.findUnique({
       where: { id: params.id },
       include: {

@@ -26,7 +26,7 @@ export async function POST(
       )
     }
 
-    // Check if organization exists
+
     const organization = await prisma.organization.findUnique({
       where: { id: params.id },
     })
