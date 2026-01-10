@@ -111,7 +111,7 @@ export async function POST(
       )
     }
 
-    // Check if user is already in roster
+
     const existingRoster = await prisma.matchRoster.findUnique({
       where: {
         matchId_userId: {
