@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET - Get list of players who accepted the match (for admin roster management)
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
