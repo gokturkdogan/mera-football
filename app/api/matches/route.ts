@@ -11,7 +11,6 @@ const createMatchSchema = z.object({
   capacity: z.number().min(2),
 })
 
-// GET - List matches
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value
