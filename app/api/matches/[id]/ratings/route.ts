@@ -110,7 +110,7 @@ export async function POST(
       )
     }
 
-    // Check if rater is in roster
+
     const isInRoster = match.roster.some((r) => r.userId === payload.userId)
     if (!isInRoster) {
       return NextResponse.json(
