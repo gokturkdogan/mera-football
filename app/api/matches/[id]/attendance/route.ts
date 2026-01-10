@@ -7,7 +7,7 @@ const updateAttendanceSchema = z.object({
   status: z.enum(['ACCEPTED', 'DECLINED']),
 })
 
-// GET - Get user's attendance status for a match
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
