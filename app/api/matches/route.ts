@@ -84,7 +84,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create match (admin only)
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value
