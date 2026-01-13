@@ -105,7 +105,6 @@ export async function GET(
   }
 }
 
-// PATCH - Update match (admin only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
