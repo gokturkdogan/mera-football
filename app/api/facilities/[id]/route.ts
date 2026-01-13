@@ -231,7 +231,6 @@ export async function DELETE(
       },
     })
 
-    // Delete matches and all related data (roster, scores, ratings, attendance) using transaction
     if (matchesAtFacility.length > 0) {
       const matchIds = matchesAtFacility.map(m => m.id)
       
