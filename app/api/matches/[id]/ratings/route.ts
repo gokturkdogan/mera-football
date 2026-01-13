@@ -119,7 +119,6 @@ export async function POST(
       )
     }
 
-    // Check if rated user is in roster
     const isRatedInRoster = match.roster.some(
       (r) => r.userId === validatedData.ratedUserId
     )

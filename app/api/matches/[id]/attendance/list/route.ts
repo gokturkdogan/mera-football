@@ -68,8 +68,6 @@ export async function GET(
       },
     })
 
-    // Also get organization members who haven't responded yet (for display)
-    // Include owner even if they're not a member
     const allMembers = await prisma.organizationMember.findMany({
       where: {
         organizationId: match.organizationId,

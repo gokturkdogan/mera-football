@@ -38,7 +38,6 @@ export async function POST(
       )
     }
 
-    // Cannot leave if owner
     if (organization.ownerId === payload.userId) {
       return NextResponse.json(
         { error: 'Organization owner cannot leave. Transfer ownership first.' },

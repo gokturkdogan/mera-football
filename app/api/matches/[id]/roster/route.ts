@@ -148,7 +148,6 @@ export async function POST(
       )
     }
 
-    // If owner is not a member yet, create membership for them
     if (isOwner && !isMember) {
       await prisma.organizationMember.create({
         data: {
