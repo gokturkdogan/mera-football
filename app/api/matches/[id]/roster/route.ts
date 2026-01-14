@@ -80,7 +80,6 @@ export async function POST(
       position: z.string().optional(),
     }).parse(body)
 
-    // Check if match exists and user is owner
     const match = await prisma.match.findUnique({
       where: { id: params.id },
       include: {
