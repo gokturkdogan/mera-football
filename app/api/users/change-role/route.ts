@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
               })
 
               if (facility) {
-                // Bu tesiste oynanan maçları bul
                 const matches = await tx.match.findMany({
                   where: { venue: facility.name },
                   select: { id: true },
