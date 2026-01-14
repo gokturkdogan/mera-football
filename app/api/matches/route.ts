@@ -134,7 +134,6 @@ export async function POST(request: NextRequest) {
 
     const adminPlan = admin?.plan || 'FREE'
 
-    // Check FREE plan limits (max 1 match per week)
     if (adminPlan === 'FREE') {
       const matchDate = new Date(validatedData.date)
       const weekStart = new Date(matchDate)
