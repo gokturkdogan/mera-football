@@ -52,7 +52,6 @@ export async function GET(
   }
 }
 
-// POST - Update attendance status
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
