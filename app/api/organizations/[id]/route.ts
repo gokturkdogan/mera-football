@@ -164,7 +164,6 @@ export async function PATCH(
     const body = await request.json()
     const validatedData = updateOrganizationSchema.parse(body)
 
-    // Update organization
     const updatedOrganization = await prisma.organization.update({
       where: { id: params.id },
       data: {
