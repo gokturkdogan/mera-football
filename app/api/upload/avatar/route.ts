@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Dosya boyutu kontrolü (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File size must be less than 5MB' },
@@ -126,7 +125,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Dosyayı buffer'a çevir
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
