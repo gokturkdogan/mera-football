@@ -23,7 +23,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Premium kontrolü
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { plan: true }
