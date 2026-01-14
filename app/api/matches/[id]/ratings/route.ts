@@ -9,7 +9,6 @@ const ratingSchema = z.object({
   comment: z.string().optional(),
 })
 
-// GET - Get match ratings
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
