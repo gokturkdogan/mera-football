@@ -385,7 +385,6 @@ export default function MatchPage() {
       teamB: [] as Array<{ userId: string; x: number; y: number }>,
     }
     
-    // Load existing positions from roster
     match.roster.forEach((player) => {
       if (player.position) {
         const parts = player.position.split('_')
