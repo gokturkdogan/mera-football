@@ -161,7 +161,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Handle iyzico payment errors
     if (error && typeof error === 'object' && 'errorMessage' in error) {
       // Create failed payment record
       if (payload && validatedData) {
