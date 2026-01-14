@@ -26,7 +26,6 @@ export async function GET(
       )
     }
 
-    // Check if match exists and user is owner
     const match = await prisma.match.findUnique({
       where: { id: params.id },
       include: {
