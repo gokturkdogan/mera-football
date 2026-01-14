@@ -100,7 +100,6 @@ export async function PATCH(
       )
     }
 
-    // Check if facility exists
     const facility = await prisma.facility.findUnique({
       where: { id: params.id },
       include: {
