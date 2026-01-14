@@ -45,7 +45,6 @@ export async function POST(
       )
     }
 
-    // Delete membership
     await prisma.organizationMember.delete({
       where: {
         userId_organizationId: {
