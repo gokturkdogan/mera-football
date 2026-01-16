@@ -98,6 +98,7 @@ interface Organization {
     time: string
     venue: string
     status: string
+    hasPendingAttendance?: boolean
   }>
   _count: {
     members: number
@@ -132,6 +133,7 @@ export default function OrganizationPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [currentFacilityIndex, setCurrentFacilityIndex] = useState(0)
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const [currentMemberIndex, setCurrentMemberIndex] = useState(0)
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set())
   const [pendingRequestsExpanded, setPendingRequestsExpanded] = useState(false)
@@ -144,6 +146,7 @@ export default function OrganizationPage() {
   const { showToast } = useToast()
   const facilityFormRef = useRef<HTMLDivElement>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const matchCarouselRef = useRef<HTMLDivElement>(null)
   const memberCarouselRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number | null>(null)
   const touchEndX = useRef<number | null>(null)
@@ -367,6 +370,23 @@ export default function OrganizationPage() {
     }
   }
 
+  const handlePrevMatch = () => {
+    if (currentMatchIndex > 0) {
+      setCurrentMatchIndex(currentMatchIndex - 1)
+    } else {
+      setCurrentMatchIndex((organization?.matches?.length || 0) - 1)
+    }
+  }
+
+  const handleNextMatch = () => {
+    const matchesLength = organization?.matches?.length || 0
+    if (currentMatchIndex < matchesLength - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1)
+    } else {
+      setCurrentMatchIndex(0)
+    }
+  }
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -385,6 +405,29 @@ export default function OrganizationPage() {
     }
     if (isRightSwipe) {
       handlePrevFacility()
+    }
+    touchStartX.current = null
+    touchEndX.current = null
+  }
+
+  const handleMatchTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleMatchTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleMatchTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return
+    const distance = touchStartX.current - touchEndX.current
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+    if (isLeftSwipe) {
+      handleNextMatch()
+    }
+    if (isRightSwipe) {
+      handlePrevMatch()
     }
     touchStartX.current = null
     touchEndX.current = null
@@ -1601,59 +1644,196 @@ export default function OrganizationPage() {
                   )}
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {(organization?.matches || []).map((match) => (
-                    <Link key={match.id} href={`/match/${match.id}`}>
-                      <Card className="border-2 hover:border-green-400 hover:shadow-xl transition-all cursor-pointer bg-white">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <p className="font-bold text-lg text-gray-900">
-                                {new Date(match.date).toLocaleDateString('tr-TR', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {match.time}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {match.venue}
-                              </p>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
-                              match.status === 'FINISHED' 
-                                ? 'bg-green-100 text-green-800 border border-green-300' 
-                                : match.status === 'UPCOMING' 
-                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                : 'bg-gray-100 text-gray-800 border border-gray-300'
-                            }`}>
-                              {match.status === 'FINISHED' ? (
-                                <>
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Tamamlandı
-                                </>
-                              ) : match.status === 'UPCOMING' ? (
-                                <>
-                                  <Calendar className="w-3 h-3" />
-                                  Yaklaşan
-                                </>
-                              ) : (
-                                match.status
-                              )}
-                            </span>
+                <div className="relative">
+                  {/* 3D Carousel Container */}
+                  <div 
+                    ref={matchCarouselRef}
+                    className="relative h-[500px] overflow-hidden"
+                    onTouchStart={handleMatchTouchStart}
+                    onTouchMove={handleMatchTouchMove}
+                    onTouchEnd={handleMatchTouchEnd}
+                    style={{ perspective: '1000px' }}
+                  >
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      {(organization?.matches || []).map((match, index) => {
+                        // Circular offset calculation
+                        let offset = index - currentMatchIndex
+                        
+                        // Normalize offset for circular carousel (wrap around)
+                        const total = organization?.matches?.length || 0
+                        if (offset > total / 2) {
+                          offset = offset - total
+                        } else if (offset < -total / 2) {
+                          offset = offset + total
+                        }
+                        
+                        const isActive = offset === 0
+                        const absOffset = Math.abs(offset)
+                        
+                        // Calculate position and scale based on circular offset
+                        let translateX = 0
+                        let translateZ = 0
+                        let scale = 0.6
+                        let opacity = 0.3
+                        
+                        if (isActive) {
+                          translateX = 0
+                          translateZ = 0
+                          scale = 1
+                          opacity = 1
+                        } else if (offset < 0) {
+                          // Left side
+                          translateX = -200
+                          translateZ = -100
+                          scale = 0.6
+                          opacity = 0.3
+                        } else if (offset > 0) {
+                          // Right side
+                          translateX = 200
+                          translateZ = -100
+                          scale = 0.6
+                          opacity = 0.3
+                        }
+                        
+                        // Special handling for circular edges
+                        if (total > 1) {
+                          if (currentMatchIndex === 0 && index === total - 1) {
+                            translateX = -200
+                            translateZ = -100
+                            scale = 0.6
+                            opacity = 0.3
+                          }
+                          if (currentMatchIndex === total - 1 && index === 0) {
+                            translateX = 200
+                            translateZ = -100
+                            scale = 0.6
+                            opacity = 0.3
+                          }
+                        }
+                        
+                        return (
+                          <div
+                            key={match.id}
+                            className="absolute transition-all duration-500 ease-in-out cursor-pointer"
+                            style={{
+                              transform: `translateX(${translateX}px) translateZ(${translateZ}px) scale(${scale})`,
+                              opacity: opacity,
+                              zIndex: isActive ? 10 : 5 - Math.abs(offset),
+                              pointerEvents: isActive ? 'auto' : 'none',
+                            }}
+                            onClick={() => isActive && router.push(`/match/${match.id}`)}
+                          >
+                            <Link href={`/match/${match.id}`}>
+                              <Card className="w-[350px] border-2 border-green-200 bg-white hover:border-green-400 hover:shadow-xl transition-all">
+                                <CardContent className="p-0">
+                                  {/* Match Image */}
+                                  <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+                                    <img 
+                                      src="/images/facility.png" 
+                                      alt="Maç"
+                                      className="w-full h-full object-cover"
+                                    />
+                                    {/* Pending Attendance Badge */}
+                                    {match.hasPendingAttendance && (
+                                      <div className="absolute top-2 left-2 z-20">
+                                        <div className="relative">
+                                          <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-75"></div>
+                                          <div className="relative bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg border-2 border-white animate-pulse">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span className="text-xs font-bold">Cevap Bekleniyor</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Status Badge */}
+                                    <div className="absolute top-3 right-3">
+                                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                        match.status === 'FINISHED' 
+                                          ? 'bg-green-100 text-green-800 border-2 border-green-300' 
+                                          : match.status === 'UPCOMING' 
+                                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                                          : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
+                                      }`}>
+                                        {match.status === 'FINISHED' ? (
+                                          <>
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            Tamamlandı
+                                          </>
+                                        ) : match.status === 'UPCOMING' ? (
+                                          <>
+                                            <Calendar className="w-3 h-3" />
+                                            Yaklaşan
+                                          </>
+                                        ) : (
+                                          match.status
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Match Info */}
+                                  <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                      <h3 className="font-bold text-xl text-gray-900">
+                                        {new Date(match.date).toLocaleDateString('tr-TR', {
+                                          day: 'numeric',
+                                          month: 'long',
+                                          year: 'numeric',
+                                        })}
+                                      </h3>
+                                      <Circle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <p className="text-sm text-gray-600 flex items-center gap-2">
+                                        <Clock className="w-4 h-4" />
+                                        {match.time}
+                                      </p>
+                                      {match.venue && (
+                                        <p className="text-sm text-gray-600 flex items-center gap-2">
+                                          <MapPin className="w-4 h-4" />
+                                          {match.venue}
+                                        </p>
+                                      )}
+                                      <div className="pt-2">
+                                        <Button 
+                                          variant="outline" 
+                                          className="w-full border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold"
+                                        >
+                                          Detayı Gör
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </Link>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <span>Detayları Gör →</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
+                        )
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Navigation Arrows */}
+                  {(organization?.matches?.length || 0) > 1 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handlePrevMatch}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white shadow-lg border-2 border-gray-200 hover:bg-gray-50 hover:scale-110 transition-all"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleNextMatch}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white shadow-lg border-2 border-gray-200 hover:bg-gray-50 hover:scale-110 transition-all"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </CardContent>

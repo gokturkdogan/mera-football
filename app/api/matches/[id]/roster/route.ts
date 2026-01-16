@@ -102,13 +102,6 @@ export async function POST(
       )
     }
 
-    // Check capacity
-    if (match.roster.length >= match.capacity) {
-      return NextResponse.json(
-        { error: 'Match roster is full' },
-        { status: 400 }
-      )
-    }
 
 
     const existingRoster = await prisma.matchRoster.findUnique({

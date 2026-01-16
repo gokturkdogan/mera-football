@@ -8,7 +8,6 @@ const createMatchSchema = z.object({
   date: z.string(),
   time: z.string(),
   venue: z.string().optional(),
-  capacity: z.number().min(2),
 })
 
 export async function GET(request: NextRequest) {
@@ -166,7 +165,7 @@ export async function POST(request: NextRequest) {
         date: new Date(validatedData.date),
         time: validatedData.time,
         venue: validatedData.venue || null,
-        capacity: validatedData.capacity,
+        capacity: null,
         status: 'DRAFT',
       },
       include: {

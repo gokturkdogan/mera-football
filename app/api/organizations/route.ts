@@ -62,8 +62,66 @@ export async function GET(request: NextRequest) {
         },
       })
 
+      // Get all organization IDs
+      const organizationIds = memberships.map(m => m.organization.id)
+
+      // Get all matches for these organizations
+      const allMatches = await prisma.match.findMany({
+        where: {
+          organizationId: {
+            in: organizationIds,
+          },
+          status: {
+            in: ['DRAFT', 'UPCOMING'],
+          },
+        },
+        select: {
+          id: true,
+          organizationId: true,
+        },
+      })
+
+      // Get all attendances for these matches and user
+      const matchIds = allMatches.map(m => m.id)
+      const attendances = await prisma.matchAttendance.findMany({
+        where: {
+          matchId: {
+            in: matchIds,
+          },
+          userId: payload.userId,
+        },
+        select: {
+          matchId: true,
+          status: true,
+        },
+      })
+
+      // Create a map of matchId -> attendance status
+      const attendanceMap = new Map(
+        attendances.map(a => [a.matchId, a.status])
+      )
+
+      // Group matches by organization and count pending
+      const pendingCountByOrg = new Map<string, number>()
+      allMatches.forEach(match => {
+        const attendance = attendanceMap.get(match.id)
+        // If no attendance record or status is PENDING, it's pending
+        if (!attendance || attendance === 'PENDING') {
+          pendingCountByOrg.set(
+            match.organizationId,
+            (pendingCountByOrg.get(match.organizationId) || 0) + 1
+          )
+        }
+      })
+
+      // Add pending count to each organization
+      const organizationsWithPendingMatches = memberships.map((m) => ({
+        ...m.organization,
+        pendingMatchAttendanceCount: pendingCountByOrg.get(m.organization.id) || 0,
+      }))
+
       return NextResponse.json({
-        organizations: memberships.map((m) => m.organization),
+        organizations: organizationsWithPendingMatches,
       })
     } else {
       // Get admin's organizations

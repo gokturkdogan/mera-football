@@ -15,7 +15,7 @@ interface Match {
   date: string
   time: string
   venue: string | null
-  capacity: number
+  capacity: number | null
   status: string
   organization: {
     id: string
@@ -60,9 +60,6 @@ export default function MatchPage() {
   const [showVenueEdit, setShowVenueEdit] = useState(false)
   const [venueValue, setVenueValue] = useState('')
   const [savingVenue, setSavingVenue] = useState(false)
-  const [showCapacityEdit, setShowCapacityEdit] = useState(false)
-  const [capacityValue, setCapacityValue] = useState(10)
-  const [savingCapacity, setSavingCapacity] = useState(false)
   const [scoreData, setScoreData] = useState({
     teamAScore: 0,
     teamBScore: 0,
@@ -226,7 +223,6 @@ export default function MatchPage() {
       const data = await res.json()
       setMatch(data.match)
       setVenueValue(data.match.venue || '')
-      setCapacityValue(data.match.capacity || 10)
       if (data.match.scores) {
         setScoreData({
           teamAScore: data.match.scores.teamAScore,
@@ -592,39 +588,6 @@ export default function MatchPage() {
     }
   }
 
-  const handleUpdateCapacity = async () => {
-    if (!match) return
-    if (capacityValue < 2) {
-      showToast('Kapasite en az 2 olmalıdır', 'error')
-      return
-    }
-    if (capacityValue < match.roster.length) {
-      showToast(`Kapasite, mevcut kadro sayısından (${match.roster.length}) küçük olamaz`, 'error')
-      return
-    }
-    setSavingCapacity(true)
-    try {
-      const res = await fetch(`/api/matches/${params.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ capacity: capacityValue }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setMatch(data.match)
-        setShowCapacityEdit(false)
-        showToast('Kapasite güncellendi', 'success')
-      } else {
-        const data = await res.json()
-        showToast(data.error || 'Hata oluştu', 'error')
-      }
-    } catch (error) {
-      showToast('Bir hata oluştu', 'error')
-    } finally {
-      setSavingCapacity(false)
-    }
-  }
 
   const handleSubmitScore = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1028,60 +991,6 @@ export default function MatchPage() {
                   <p className="text-sm font-bold text-gray-900">{match.time}</p>
                 </div>
 
-                {/* Capacity Section - Editable */}
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-xs text-gray-600">👥 Kapasite</Label>
-                    {isOwner && match.status !== 'FINISHED' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (showCapacityEdit) {
-                            setShowCapacityEdit(false)
-                            setCapacityValue(match.capacity)
-                          } else {
-                            setShowCapacityEdit(true)
-                          }
-                        }}
-                        className="h-6 w-6 p-0"
-                      >
-                        {showCapacityEdit ? '✕' : '✏️'}
-                      </Button>
-                    )}
-                  </div>
-                  {showCapacityEdit ? (
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        type="number"
-                        min="2"
-                        max="22"
-                        value={capacityValue}
-                        onChange={(e) => setCapacityValue(parseInt(e.target.value) || 2)}
-                        className="flex-1 text-sm h-8"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleUpdateCapacity}
-                        disabled={savingCapacity}
-                        className="bg-green-600 hover:bg-green-700 h-8 px-2"
-                      >
-                        {savingCapacity ? '...' : '✓'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-xl font-black text-green-700">
-                        {match.capacity}
-                      </p>
-                      {match.roster.length > 0 && (
-                        <p className="text-xs text-gray-600 mt-0.5">
-                          {match.roster.length} oyuncu
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
               </div>
               
               {/* Alt Satır: Saha Adı - Tam Genişlik */}
@@ -1274,7 +1183,7 @@ export default function MatchPage() {
                 <span className="text-2xl">👥</span>
                 Kadro Listesi
                 <span className="ml-auto text-sm font-normal text-gray-600">
-                  ({match.roster.length}/{match.capacity})
+                  ({match.roster.length} oyuncu)
                 </span>
               </CardTitle>
             </CardHeader>
