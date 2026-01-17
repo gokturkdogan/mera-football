@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import Navbar from '@/components/Navbar'
+import { Target, Calendar, Clock, MapPin, CheckCircle2, XCircle, FileText, Users, Star, Pencil, X, Plus, Lightbulb, Trophy } from 'lucide-react'
 
 interface Match {
   id: string
@@ -52,6 +54,7 @@ interface Match {
 export default function MatchPage() {
   const router = useRouter()
   const params = useParams()
+  const { showToast } = useToast()
   const [match, setMatch] = useState<Match | null>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -73,6 +76,7 @@ export default function MatchPage() {
     id: string
     userId: string
     status: string
+    attendanceStatus?: 'PENDING' | 'ACCEPTED' | 'DECLINED'
     user: {
       id: string
       name: string
@@ -93,6 +97,9 @@ export default function MatchPage() {
   const [attendanceStatus, setAttendanceStatus] = useState<'PENDING' | 'ACCEPTED' | 'DECLINED'>('PENDING')
   const [loadingAttendance, setLoadingAttendance] = useState(false)
   const [isOrganizationMember, setIsOrganizationMember] = useState(false)
+  const [showRemovePlayerModal, setShowRemovePlayerModal] = useState(false)
+  const [playerToRemove, setPlayerToRemove] = useState<{ id: string; userId: string; name: string } | null>(null)
+  const [removingPlayer, setRemovingPlayer] = useState(false)
   
   // Free formation: players can be placed anywhere on the field
   const [formation, setFormation] = useState<{
@@ -175,6 +182,8 @@ export default function MatchPage() {
       if (res.ok) {
         setAttendanceStatus(status)
         showToast(status === 'ACCEPTED' ? 'Maça katılacağınızı belirttiniz!' : 'Maça katılmayacağınızı belirttiniz.', 'success')
+        // Refresh organization members list to update disabled status
+        await fetchOrganizationMembers()
       } else {
         const data = await res.json()
         showToast(data.error || 'Hata oluştu', 'error')
@@ -241,38 +250,23 @@ export default function MatchPage() {
     setLoadingMembers(true)
     try {
       const isOwnerCheck = user.id === match.organization.ownerId
-      // If user is owner and match is not finished, get only accepted players for roster management
+      // If user is owner and match is not finished, get all members with attendance status
       if (isOwnerCheck && match.status !== 'FINISHED' && match.status !== 'PUBLISHED') {
         const res = await fetch(`/api/matches/${match.id}/attendance/list`, {
           credentials: 'include',
         })
         if (res.ok) {
           const data = await res.json()
-          // Only show players who accepted (owner is always included)
-          const acceptedMembers = data.allMembers
-            .filter((m: any) => m.attendanceStatus === 'ACCEPTED' || m.userId === match.organization.ownerId)
-            .map((m: any) => ({
-              id: m.id,
-              userId: m.userId,
-              status: m.status,
-              user: m.user,
-            }))
+          // Show all members with attendance status (owner is always ACCEPTED)
+          const allMembers = data.allMembers.map((m: any) => ({
+            id: m.id,
+            userId: m.userId,
+            status: m.status,
+            attendanceStatus: m.attendanceStatus || 'PENDING',
+            user: m.user,
+          }))
           
-          // Ensure owner is in the list
-          const ownerInList = acceptedMembers.some((m: any) => m.userId === match.organization.ownerId)
-          if (!ownerInList && data.acceptedPlayers) {
-            const owner = data.acceptedPlayers.find((p: any) => p.id === match.organization.ownerId)
-            if (owner) {
-              acceptedMembers.push({
-                id: `owner-${match.organization.ownerId}`,
-                userId: owner.id,
-                status: 'APPROVED',
-                user: owner,
-              })
-            }
-          }
-          
-          setOrganizationMembers(acceptedMembers)
+          setOrganizationMembers(allMembers)
         } else {
           // Fallback to regular members API
           const res2 = await fetch(`/api/organizations/${match.organization.id}/members`, {
@@ -285,7 +279,7 @@ export default function MatchPage() {
           }
         }
       } else {
-        // For non-owners or finished matches, show all approved members
+        // For non-owners or finished matches, show all approved members with attendance status
         const res = await fetch(`/api/organizations/${match.organization.id}/members`, {
           credentials: 'include',
         })
@@ -293,7 +287,36 @@ export default function MatchPage() {
           const data = await res.json()
           // Filter only approved members
           const approved = data.members.filter((m: any) => m.status === 'APPROVED')
-          setOrganizationMembers(approved)
+          
+          // Get all match attendances in one query
+          const attendancesRes = await fetch(`/api/matches/${match.id}/attendance/all`, {
+            credentials: 'include',
+          })
+          
+          let attendanceMap = new Map<string, 'PENDING' | 'ACCEPTED' | 'DECLINED'>()
+          
+          if (attendancesRes.ok) {
+            const attendanceData = await attendancesRes.json()
+            attendanceData.attendances?.forEach((att: any) => {
+              attendanceMap.set(att.userId, att.status)
+            })
+          }
+          
+          // Add owner to attendance map as ACCEPTED
+          if (match.organization.ownerId) {
+            attendanceMap.set(match.organization.ownerId, 'ACCEPTED')
+          }
+          
+          // Map members with attendance status
+          const membersWithAttendance = approved.map((m: any) => ({
+            id: m.id,
+            userId: m.userId,
+            status: m.status,
+            attendanceStatus: attendanceMap.get(m.userId) || 'PENDING',
+            user: m.user,
+          }))
+          
+          setOrganizationMembers(membersWithAttendance)
         }
       }
     } catch (error) {
@@ -467,6 +490,15 @@ export default function MatchPage() {
     if (!match || !user) return
     const isOwnerCheck = user.id === match.organization.ownerId
     if (!isOwnerCheck) return
+    
+    // Check if player has accepted the match
+    if (userId && userId !== match.organization.ownerId) {
+      const member = organizationMembers.find(m => m.userId === userId)
+      if (member && member.attendanceStatus !== 'ACCEPTED') {
+        showToast('Bu oyuncu maçı henüz kabul etmedi', 'error')
+        return
+      }
+    }
     
     // Update formation state
     setFormation((prev) => {
@@ -678,9 +710,22 @@ export default function MatchPage() {
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-500 text-white'
               }`}>
-                {match.status === 'FINISHED' ? '✅ Tamamlandı' : 
-                 match.status === 'UPCOMING' ? '📅 Yaklaşan' : 
-                 match.status === 'DRAFT' ? '📝 Taslak' : match.status}
+                {match.status === 'FINISHED' ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                    Tamamlandı
+                  </>
+                ) : match.status === 'UPCOMING' ? (
+                  <>
+                    <Calendar className="w-4 h-4 inline mr-1" />
+                    Yaklaşan
+                  </>
+                ) : match.status === 'DRAFT' ? (
+                  <>
+                    <FileText className="w-4 h-4 inline mr-1" />
+                    Taslak
+                  </>
+                ) : match.status}
               </span>
               {match.scores && (
                 <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl border-2 border-white/30">
@@ -701,10 +746,23 @@ export default function MatchPage() {
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex-1 text-center md:text-left">
-                  <h3 className="text-2xl font-black text-gray-900 mb-2">
-                    {attendanceStatus === 'PENDING' ? '⚽ Maça Katılacak mısınız?' : 
-                     attendanceStatus === 'ACCEPTED' ? '✅ Maça katılacağınızı belirttiniz' : 
-                     '❌ Maça katılmayacağınızı belirttiniz'}
+                  <h3 className="text-2xl font-black text-gray-900 mb-2 flex items-center gap-2">
+                    {attendanceStatus === 'PENDING' ? (
+                      <>
+                        <Target className="w-6 h-6" />
+                        Maça Katılacak mısınız?
+                      </>
+                    ) : attendanceStatus === 'ACCEPTED' ? (
+                      <>
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        Maça katılacağınızı belirttiniz
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-6 h-6 text-red-600" />
+                        Maça katılmayacağınızı belirttiniz
+                      </>
+                    )}
                   </h3>
                   <p className="text-sm text-gray-700">
                     {attendanceStatus === 'PENDING' 
@@ -725,7 +783,22 @@ export default function MatchPage() {
                     }`}
                     size="lg"
                   >
-                    {loadingAttendance ? '...' : attendanceStatus === 'ACCEPTED' ? '✅ Katılacağım' : '✓ Katılacağım'}
+                    {loadingAttendance ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Yükleniyor...
+                      </div>
+                    ) : attendanceStatus === 'ACCEPTED' ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Katılacağım
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Katılacağım
+                      </>
+                    )}
                   </Button>
                   <Button
                     onClick={() => handleAttendanceUpdate('DECLINED')}
@@ -736,7 +809,22 @@ export default function MatchPage() {
                     }`}
                     size="lg"
                   >
-                    {loadingAttendance ? '...' : attendanceStatus === 'DECLINED' ? '❌ Katılmayacağım' : '✕ Katılmayacağım'}
+                    {loadingAttendance ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Yükleniyor...
+                      </div>
+                    ) : attendanceStatus === 'DECLINED' ? (
+                      <>
+                        <XCircle className="w-4 h-4" />
+                        Katılmayacağım
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4" />
+                        Katılmayacağım
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -754,7 +842,7 @@ export default function MatchPage() {
             <Card className="shadow-xl border-2 border-emerald-300 bg-gradient-to-br from-white to-emerald-50 h-full">
               <CardHeader className="bg-gradient-to-r from-emerald-100 to-teal-100 border-b-2 border-emerald-300">
                 <CardTitle className="flex items-center gap-2">
-                  <span>⚽</span>
+                  <Target className="w-5 h-5" />
                   Diziliş Ön İzlemesi
                 </CardTitle>
                 <CardDescription>
@@ -766,9 +854,9 @@ export default function MatchPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="flex gap-3">
+                <div className="flex flex-col lg:flex-row gap-3">
                   {/* Halısaha Krokisi - Responsive */}
-                  <div className="w-[60%]">
+                  <div className="w-full lg:w-[60%]">
                     <div 
                       className="relative bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-2xl border-4 border-green-600 shadow-2xl overflow-hidden" 
                       style={{ aspectRatio: '16/9', minHeight: '500px', padding: '0.75rem', width: '100%' }}
@@ -851,12 +939,12 @@ export default function MatchPage() {
                   </div>
 
                   {/* Oyuncu Listesi - Kompakt */}
-                  <div className="w-[40%]">
-                    <Card className="shadow-xl border-2 border-purple-300 bg-gradient-to-br from-white to-purple-50 h-full">
-                      <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 border-b-2 border-purple-300 p-1.5">
+                  <div className="w-full lg:w-[40%]">
+                    <Card className="shadow-xl border-2 border-purple-300 bg-gradient-to-br from-white to-purple-50 max-h-[500px] lg:h-full flex flex-col">
+                      <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 border-b-2 border-purple-300 p-1.5 flex-shrink-0">
                         <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
-                          <span className="text-sm">👥</span>
-                          Maçı Kabul Eden Oyuncular
+                          <Users className="w-4 h-4" />
+                          Oyuncular
                         </CardTitle>
                         <CardDescription className="text-[9px] mt-0.5">
                           {isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED' 
@@ -864,35 +952,57 @@ export default function MatchPage() {
                             : 'Kadro listesi'}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-1.5">
-                        <div className="space-y-0.5 max-h-[480px] overflow-y-auto">
-                          {organizationMembers.length === 0 ? (
+                      <CardContent className="p-1.5 flex-1 overflow-hidden flex flex-col">
+                        <div className="space-y-0.5 flex-1 overflow-y-auto">
+                          {loadingMembers ? (
+                            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                              <div className="relative w-16 h-16">
+                                <div className="absolute inset-0 border-4 border-purple-200 rounded-full"></div>
+                                <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
+                              </div>
+                              <p className="text-sm text-gray-600 font-medium">Oyuncular yükleniyor...</p>
+                            </div>
+                          ) : organizationMembers.length === 0 ? (
                             <div className="text-center py-4">
-                              <div className="text-2xl mb-1">⚽</div>
+                              <Target className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                               <p className="text-gray-600 text-xs">Henüz oyuncu yok</p>
                             </div>
                           ) : (
                             organizationMembers.map((member) => {
-                              const isInFormation = formation.teamA.some(p => p.userId === member.userId) || 
-                                                   formation.teamB.some(p => p.userId === member.userId)
+                              const isInTeamA = formation.teamA.some(p => p.userId === member.userId)
+                              const isInTeamB = formation.teamB.some(p => p.userId === member.userId)
+                              const isInFormation = isInTeamA || isInTeamB
+                              const isAccepted = member.attendanceStatus === 'ACCEPTED' || member.userId === match.organization.ownerId
+                              const canDrag = !isInFormation && isAccepted && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'
+                              const isDisabled = !isAccepted && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'
                               return (
                                 <div
                                   key={member.userId}
-                                  draggable={!isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED'}
+                                  draggable={canDrag}
                                   onDragStart={(e) => {
-                                    if (!isInFormation) {
+                                    if (!isInFormation && isAccepted) {
                                       handleDragStart(e, member.userId)
+                                    } else {
+                                      e.preventDefault()
                                     }
                                   }}
                                   className={`p-1 border rounded-md flex items-center gap-1.5 transition-all ${
-                                    isInFormation 
-                                      ? 'bg-gray-100 border-gray-300 opacity-60' 
+                                    isInTeamA
+                                      ? 'bg-blue-100 border-blue-300 opacity-90' 
+                                      : isInTeamB
+                                      ? 'bg-red-100 border-red-300 opacity-90'
+                                      : isDisabled
+                                      ? 'bg-gray-100 border-gray-300 opacity-50 cursor-not-allowed'
                                       : 'bg-white border-gray-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 hover:shadow-sm'
-                                  } ${!isOwner || match.status === 'FINISHED' || match.status === 'PUBLISHED' ? '' : isInFormation ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
+                                  } ${match.status === 'FINISHED' || match.status === 'PUBLISHED' ? '' : isInFormation ? 'cursor-default' : canDrag ? 'cursor-grab active:cursor-grabbing' : isDisabled ? 'cursor-not-allowed' : ''}`}
                                 >
                                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm flex-shrink-0 ${
-                                    isInFormation 
-                                      ? 'bg-gray-400' 
+                                    isInTeamA
+                                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                      : isInTeamB
+                                      ? 'bg-gradient-to-br from-red-500 to-red-600'
+                                      : isDisabled
+                                      ? 'bg-gray-400'
                                       : 'bg-gradient-to-br from-purple-500 to-pink-600'
                                   }`}>
                                     {member.user.name.charAt(0).toUpperCase()}
@@ -902,7 +1012,7 @@ export default function MatchPage() {
                                       href={`/players/${member.userId}`}
                                       onClick={(e) => {
                                         // If draggable, prevent default and check if it's a click or drag
-                                        if (!isInFormation && isOwner && match.status !== 'FINISHED' && match.status !== 'PUBLISHED') {
+                                        if (!isInFormation && canDrag) {
                                           // Check if mouse moved (drag) or stayed (click)
                                           const startX = e.clientX
                                           const startY = e.clientY
@@ -921,12 +1031,27 @@ export default function MatchPage() {
                                       }}
                                       className="block"
                                     >
-                                      <p className={`font-semibold text-xs truncate ${isInFormation ? 'text-gray-500' : 'text-gray-900'} hover:text-purple-600 transition-colors cursor-pointer`}>
+                                      <p className={`font-semibold text-xs truncate ${
+                                        isInTeamA
+                                          ? 'text-blue-700' 
+                                          : isInTeamB
+                                          ? 'text-red-700'
+                                          : isDisabled
+                                          ? 'text-gray-400'
+                                          : 'text-gray-900'
+                                      } ${isDisabled ? '' : 'hover:text-purple-600 transition-colors cursor-pointer'}`}>
                                         {member.user.name}
                                       </p>
                                       {isInFormation && (
-                                        <p className="text-[9px] text-gray-500 font-medium">
-                                          Dizilişte
+                                        <p className={`text-[9px] font-medium ${
+                                          isInTeamA ? 'text-blue-600' : 'text-red-600'
+                                        }`}>
+                                          {isInTeamA ? 'Takım A' : 'Takım B'}
+                                        </p>
+                                      )}
+                                      {isDisabled && !isInFormation && (
+                                        <p className="text-[9px] text-gray-400 font-medium">
+                                          Henüz kabul etmedi
                                         </p>
                                       )}
                                     </Link>
@@ -970,12 +1095,24 @@ export default function MatchPage() {
           {/* Sağ Kolon: Maç Bilgileri */}
           <Card className="shadow-xl border-2 border-green-200 bg-white h-full">
           <CardContent className="p-6">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 border-4 border-green-200 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-green-600 rounded-full border-t-transparent animate-spin"></div>
+                </div>
+                <p className="text-sm text-gray-600 font-medium">Maç bilgileri yükleniyor...</p>
+              </div>
+            ) : (
             <div className="space-y-4">
               {/* Üst Satır: Tarih, Saat, Kapasite */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Tarih */}
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
-                  <Label className="text-xs text-gray-600 mb-1 block">📅 Tarih</Label>
+                  <Label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Tarih
+                  </Label>
                   <p className="text-sm font-bold text-gray-900">
                     {new Date(match.date).toLocaleDateString('tr-TR', {
                       day: 'numeric',
@@ -987,7 +1124,10 @@ export default function MatchPage() {
                 
                 {/* Saat */}
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
-                  <Label className="text-xs text-gray-600 mb-1 block">🕐 Saat</Label>
+                  <Label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Saat
+                  </Label>
                   <p className="text-sm font-bold text-gray-900">{match.time}</p>
                 </div>
 
@@ -996,7 +1136,10 @@ export default function MatchPage() {
               {/* Alt Satır: Saha Adı - Tam Genişlik */}
               <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs text-gray-600">🏟️ Saha Adı</Label>
+                  <Label className="text-xs text-gray-600 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    Saha Adı
+                  </Label>
                   {isOwner && match.status !== 'FINISHED' && (
                     <Button
                       variant="ghost"
@@ -1011,7 +1154,7 @@ export default function MatchPage() {
                       }}
                       className="h-6 w-6 p-0"
                     >
-                      {showVenueEdit ? '✕' : match.venue ? '✏️' : '➕'}
+                      {showVenueEdit ? <X className="w-4 h-4" /> : match.venue ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </Button>
                   )}
                 </div>
@@ -1042,7 +1185,8 @@ export default function MatchPage() {
                       <div className="mt-3">
                         <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-2 mb-2">
                           <p className="text-xs font-semibold text-yellow-900 text-center">
-                            🏟️ {selectedFacility.name}
+                            <MapPin className="w-3 h-3 inline mr-1" />
+                            {selectedFacility.name}
                           </p>
                         </div>
                         <div className="w-full h-64 rounded-lg overflow-hidden border-2 border-gray-300 bg-gray-100">
@@ -1072,6 +1216,7 @@ export default function MatchPage() {
                 )}
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
         </div>
@@ -1083,7 +1228,7 @@ export default function MatchPage() {
             <Card className="shadow-xl border-2 border-blue-200 bg-white">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-2xl">⚽</span>
+                  <Trophy className="w-6 h-6" />
                   Maç Skoru
                 </CardTitle>
               </CardHeader>
@@ -1123,7 +1268,7 @@ export default function MatchPage() {
             <Card className="shadow-xl border-2 border-blue-200 bg-white">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-2xl">⚽</span>
+                  <Trophy className="w-6 h-6" />
                   Skor Girişi
                 </CardTitle>
               </CardHeader>
@@ -1180,7 +1325,7 @@ export default function MatchPage() {
           <Card className="shadow-xl border-2 border-purple-200 bg-white">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">👥</span>
+                <Users className="w-6 h-6" />
                 Kadro Listesi
                 <span className="ml-auto text-sm font-normal text-gray-600">
                   ({match.roster.length} oyuncu)
@@ -1191,7 +1336,7 @@ export default function MatchPage() {
               <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {match.roster.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="text-4xl mb-2">⚽</div>
+                    <Target className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                     <p className="text-gray-600 font-medium">Henüz kadro oluşturulmamış</p>
                   </div>
                 ) : (
@@ -1214,27 +1359,18 @@ export default function MatchPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={async () => {
-                            if (!confirm('Bu oyuncuyu kadrodan çıkarmak istediğinize emin misiniz?')) {
-                              return
-                            }
-                            try {
-                              const res = await fetch(`/api/matches/${params.id}/roster?userId=${player.userId}`, {
-                                method: 'DELETE',
-                              })
-                              if (res.ok) {
-                                fetchMatch()
-                              } else {
-                                const data = await res.json()
-                                showToast(data.error || 'Hata oluştu', 'error')
-                              }
-                            } catch (error) {
-                              showToast('Bir hata oluştu', 'error')
-                            }
+                          onClick={() => {
+                            setPlayerToRemove({
+                              id: player.id,
+                              userId: player.userId,
+                              name: player.user.name,
+                            })
+                            setShowRemovePlayerModal(true)
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          ✕ Çıkar
+                          <X className="w-4 h-4 mr-1" />
+                          Çıkar
                         </Button>
                       )}
                     </div>
@@ -1249,7 +1385,7 @@ export default function MatchPage() {
           <Card className="mb-6 shadow-xl border-2 border-yellow-200 bg-white">
             <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">⭐</span>
+                <Star className="w-6 h-6" />
                 Oyuncu Puanlama
               </CardTitle>
             </CardHeader>
@@ -1260,7 +1396,8 @@ export default function MatchPage() {
                   className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-lg py-6"
                   size="lg"
                 >
-                  ⭐ Oyuncu Puanla
+                  <Star className="w-5 h-5 mr-1" />
+                  Oyuncu Puanla
                 </Button>
               ) : (
                 <form onSubmit={handleSubmitRating} className="space-y-4">
@@ -1300,7 +1437,7 @@ export default function MatchPage() {
                           className={`text-2xl cursor-pointer ${star <= ratingData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
                           onClick={() => setRatingData({ ...ratingData, rating: star })}
                         >
-                          ⭐
+                          <Star className={`w-6 h-6 cursor-pointer ${star <= ratingData.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} />
                         </span>
                       ))}
                     </div>
@@ -1332,13 +1469,22 @@ export default function MatchPage() {
           <Card className="shadow-xl border-2 border-indigo-200 bg-white">
             <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">⭐</span>
+                <Star className="w-6 h-6" />
                 Puanlamalar ({match.ratings.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                {match.ratings.map((rating) => (
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                    <div className="relative w-16 h-16">
+                      <div className="absolute inset-0 border-4 border-yellow-200 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-yellow-600 rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 font-medium">Puanlamalar yükleniyor...</p>
+                  </div>
+                ) : match.ratings.length === 0 ? null : (
+                  match.ratings.map((rating) => (
                   <div key={rating.id} className="p-4 border-2 rounded-xl bg-gradient-to-r from-white to-indigo-50 hover:shadow-md transition-all border-indigo-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -1354,7 +1500,14 @@ export default function MatchPage() {
                           <p className="font-bold text-gray-900">{rating.ratedUser.name}</p>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">{'⭐'.repeat(rating.rating)}</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-5 h-5 ${star <= rating.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
                           <span className="text-sm text-gray-600">({rating.rating}/5)</span>
                         </div>
                         {rating.comment && (
@@ -1365,11 +1518,84 @@ export default function MatchPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Remove Player Modal */}
+        <Dialog open={showRemovePlayerModal} onOpenChange={setShowRemovePlayerModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                <Target className="w-6 h-6" />
+                Oyuncuyu Kadrodan Çıkar
+              </DialogTitle>
+              <DialogDescription className="text-base pt-2">
+                <span className="font-bold text-gray-900">{playerToRemove?.name}</span> adlı oyuncuyu kadrodan çıkarmak istediğinize emin misiniz?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="px-6 py-4">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 font-medium">
+                  <Lightbulb className="w-4 h-4 inline mr-1" />
+                  <strong>Bilgi:</strong> Bu oyuncu kadrodan çıkarılacak ancak daha sonra tekrar kadroya ekleyebilirsiniz.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="gap-3 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRemovePlayerModal(false)
+                  setPlayerToRemove(null)
+                }}
+                disabled={removingPlayer}
+                className="flex-1 sm:flex-none"
+              >
+                İptal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!playerToRemove) return
+                  setRemovingPlayer(true)
+                  try {
+                    const res = await fetch(`/api/matches/${params.id}/roster?userId=${playerToRemove.userId}`, {
+                      method: 'DELETE',
+                    })
+                    if (res.ok) {
+                      showToast(`${playerToRemove.name} kadrodan çıkarıldı`, 'success')
+                      setShowRemovePlayerModal(false)
+                      setPlayerToRemove(null)
+                      fetchMatch()
+                    } else {
+                      const data = await res.json()
+                      showToast(data.error || 'Hata oluştu', 'error')
+                    }
+                  } catch (error) {
+                    showToast('Bir hata oluştu', 'error')
+                  } finally {
+                    setRemovingPlayer(false)
+                  }
+                }}
+                disabled={removingPlayer}
+                className="flex-1 sm:flex-none bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
+              >
+                {removingPlayer ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Çıkarılıyor...
+                  </div>
+                ) : (
+                  'Kadrodan Çıkar'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
