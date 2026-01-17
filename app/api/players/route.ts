@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
         showWeight: true,
         showAge: true,
         role: true,
+        averageRating: true,
         createdAt: true,
         _count: {
           select: {

@@ -3,17 +3,20 @@ import { AdminPlan } from '@prisma/client'
 
 export interface PlanLimits {
   maxPlayers: number
-  maxMatchesPerWeek: number
+  maxMatchesLifetime: number
+  maxOrganizations: number
 }
 
 export const PLAN_LIMITS: Record<AdminPlan, PlanLimits> = {
   FREE: {
     maxPlayers: 14,
-    maxMatchesPerWeek: 1,
+    maxMatchesLifetime: 2,
+    maxOrganizations: 1,
   },
   PREMIUM: {
     maxPlayers: 999999,
-    maxMatchesPerWeek: 999999,
+    maxMatchesLifetime: 999999,
+    maxOrganizations: 999999,
   },
 }
 
@@ -80,28 +83,17 @@ export async function checkOrganizationLimits(
   }
 
   if (action === 'CREATE_MATCH') {
-    if (limits.maxMatchesPerWeek < 999999) {
-      const matchDate = new Date()
-      const weekStart = new Date(matchDate)
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-      weekStart.setHours(0, 0, 0, 0)
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekEnd.getDate() + 7)
-
-      const matchesThisWeek = await prisma.match.count({
+    if (limits.maxMatchesLifetime < 999999) {
+      const totalMatches = await prisma.match.count({
         where: {
           organizationId,
-          date: {
-            gte: weekStart,
-            lt: weekEnd,
-          },
         },
       })
 
-      if (matchesThisWeek >= limits.maxMatchesPerWeek) {
+      if (totalMatches >= limits.maxMatchesLifetime) {
         return {
           allowed: false,
-          reason: `Maximum ${limits.maxMatchesPerWeek} match per week allowed for ${adminPlan} plan`,
+          reason: `Maximum ${limits.maxMatchesLifetime} match allowed for ${adminPlan} plan`,
         }
       }
     }

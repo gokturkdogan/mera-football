@@ -24,7 +24,11 @@ import {
   ArrowRight,
   Filter,
   Shield,
-  X
+  X,
+  Star,
+  StarHalf,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react'
 
 interface Player {
@@ -45,6 +49,7 @@ interface Player {
   showWeight: boolean
   showAge: boolean
   role: string
+  averageRating: number | null
   createdAt: string
   _count: {
     organizations: number
@@ -58,6 +63,7 @@ export default function PlayersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  const [ratingSortOrder, setRatingSortOrder] = useState<'none' | 'desc' | 'asc'>('none')
 
   useEffect(() => {
     fetchPlayers()
@@ -84,8 +90,26 @@ export default function PlayersPage() {
       )
     }
 
+    // Apply rating sort
+    if (ratingSortOrder !== 'none') {
+      filtered = [...filtered].sort((a, b) => {
+        // Puanı olmayanları her zaman en sonda göster
+        if (a.averageRating === null && b.averageRating === null) return 0
+        if (a.averageRating === null) return 1
+        if (b.averageRating === null) return -1
+        
+        if (ratingSortOrder === 'desc') {
+          // En yüksekten en düşüğe
+          return (b.averageRating || 0) - (a.averageRating || 0)
+        } else {
+          // En düşükten en yükseğe
+          return (a.averageRating || 0) - (b.averageRating || 0)
+        }
+      })
+    }
+
     setFilteredPlayers(filtered)
-  }, [searchTerm, players, activeFilter])
+  }, [searchTerm, players, activeFilter, ratingSortOrder])
 
   const fetchPlayers = async () => {
     try {
@@ -302,7 +326,34 @@ export default function PlayersPage() {
                       <th className="text-left p-4 font-semibold text-gray-900">İletişim</th>
                       <th className="text-left p-4 font-semibold text-gray-900">Mevki</th>
                       <th className="text-left p-4 font-semibold text-gray-900">Güçlü Ayak</th>
-                      <th className="text-left p-4 font-semibold text-gray-900">Fiziksel</th>
+                      <th 
+                        className="text-left p-4 font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                        onClick={() => {
+                          if (ratingSortOrder === 'none') {
+                            setRatingSortOrder('desc')
+                          } else if (ratingSortOrder === 'desc') {
+                            setRatingSortOrder('asc')
+                          } else {
+                            setRatingSortOrder('none')
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Puan Ortalaması</span>
+                          {ratingSortOrder === 'desc' && (
+                            <ChevronDown className="w-4 h-4 text-gray-600" />
+                          )}
+                          {ratingSortOrder === 'asc' && (
+                            <ChevronUp className="w-4 h-4 text-gray-600" />
+                          )}
+                          {ratingSortOrder === 'none' && (
+                            <div className="w-4 h-4 flex flex-col items-center justify-center opacity-60">
+                              <ChevronUp className="w-3 h-3 text-gray-500" />
+                              <ChevronDown className="w-3 h-3 text-gray-500 -mt-1" />
+                            </div>
+                          )}
+                        </div>
+                      </th>
                       <th className="text-center p-4 font-semibold text-gray-900">İşlem</th>
                     </tr>
                   </thead>
@@ -401,43 +452,40 @@ export default function PlayersPage() {
                           </div>
                         </td>
 
-                        {/* Physical Attributes */}
+                        {/* Average Rating */}
                         <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            {/* Boy */}
-                            <div className="flex items-center gap-1" title="Boy">
-                              <Ruler className="w-3.5 h-3.5 text-cyan-600" />
-                              {player.showHeight ? (
-                                <span className="text-xs font-medium text-gray-700">
-                                  {player.height ? `${player.height}cm` : '-'}
-                                </span>
-                              ) : (
-                                <EyeOff className="w-3 h-3 text-gray-400" />
-                              )}
+                          {player.averageRating !== null && player.averageRating !== undefined ? (
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => {
+                                const rating = player.averageRating || 0
+                                const fullStars = Math.floor(rating)
+                                const hasHalfStar = rating % 1 >= 0.5 && i === fullStars
+                                const isFilled = i < fullStars || hasHalfStar
+                                
+                                if (hasHalfStar) {
+                                  return (
+                                    <StarHalf
+                                      key={i}
+                                      className="w-4 h-4 text-yellow-400 fill-yellow-400"
+                                    />
+                                  )
+                                }
+                                
+                                return (
+                                  <Star
+                                    key={i}
+                                    className={`w-4 h-4 ${
+                                      isFilled
+                                        ? 'text-yellow-400 fill-yellow-400'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                )
+                              })}
                             </div>
-                            {/* Kilo */}
-                            <div className="flex items-center gap-1" title="Kilo">
-                              <Weight className="w-3.5 h-3.5 text-cyan-600" />
-                              {player.showWeight ? (
-                                <span className="text-xs font-medium text-gray-700">
-                                  {player.weight ? `${player.weight}kg` : '-'}
-                                </span>
-                              ) : (
-                                <EyeOff className="w-3 h-3 text-gray-400" />
-                              )}
-                            </div>
-                            {/* Yaş */}
-                            <div className="flex items-center gap-1" title="Yaş">
-                              <Calendar className="w-3.5 h-3.5 text-cyan-600" />
-                              {player.showAge ? (
-                                <span className="text-xs font-medium text-gray-700">
-                                  {player.age ? `${player.age}` : '-'}
-                                </span>
-                              ) : (
-                                <EyeOff className="w-3 h-3 text-gray-400" />
-                              )}
-                            </div>
-                          </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">Henüz puanlanmamış</span>
+                          )}
                         </td>
 
                         {/* Action */}
@@ -482,44 +530,6 @@ export default function PlayersPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 md:py-12 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                  <Target className="w-6 h-6 text-white" />
-                </div>
-                <h4 className="text-xl font-bold">MeraFootball</h4>
-              </div>
-              <p className="text-gray-400">
-                Halısaha futbol organizasyonları için profesyonel platform
-              </p>
-            </div>
-            <div>
-              <h5 className="font-semibold mb-4">Hızlı Linkler</h5>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link href="/" className="hover:text-white transition-colors">Ana Sayfa</Link></li>
-                <li><Link href="/how-it-works" className="hover:text-white transition-colors">Nasıl Çalışır?</Link></li>
-                <li><Link href="/login" className="hover:text-white transition-colors">Giriş Yap</Link></li>
-                <li><Link href="/register" className="hover:text-white transition-colors">Kayıt Ol</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h5 className="font-semibold mb-4">Destek</h5>
-              <ul className="space-y-2 text-gray-400">
-                <li>Email: destek@merafootball.com</li>
-                <li>7/24 Destek</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>© 2024 MeraFootball. Tüm hakları saklıdır.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

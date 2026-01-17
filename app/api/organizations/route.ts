@@ -218,20 +218,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createOrganizationSchema.parse(body)
 
-    // Check organization limit (max 3 for all admins)
-    const existingOrganizations = await prisma.organization.count({
-      where: {
-        ownerId: payload.userId,
-      },
-    })
-
-    if (existingOrganizations >= 3) {
-      return NextResponse.json(
-        { error: 'Maksimum 3 organizasyon oluşturabilirsiniz' },
-        { status: 400 }
-      )
-    }
-
     // Get admin's plan
     const admin = await prisma.user.findUnique({
       where: { id: payload.userId },
@@ -239,6 +225,25 @@ export async function POST(request: NextRequest) {
     })
 
     const adminPlan = admin?.plan || 'FREE'
+
+    // Check organization limit based on plan
+    const { PLAN_LIMITS } = await import('@/lib/plan-limits')
+    const limits = PLAN_LIMITS[adminPlan]
+
+    if (limits.maxOrganizations < 999999) {
+      const existingOrganizations = await prisma.organization.count({
+        where: {
+          ownerId: payload.userId,
+        },
+      })
+
+      if (existingOrganizations >= limits.maxOrganizations) {
+        return NextResponse.json(
+          { error: `FREE plan allows maximum ${limits.maxOrganizations} organization` },
+          { status: 400 }
+        )
+      }
+    }
 
     const organization = await prisma.organization.create({
       data: {

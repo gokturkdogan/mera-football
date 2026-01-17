@@ -134,26 +134,15 @@ export async function POST(request: NextRequest) {
     const adminPlan = admin?.plan || 'FREE'
 
     if (adminPlan === 'FREE') {
-      const matchDate = new Date(validatedData.date)
-      const weekStart = new Date(matchDate)
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-      weekStart.setHours(0, 0, 0, 0)
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekEnd.getDate() + 7)
-
-      const matchesThisWeek = await prisma.match.count({
+      const totalMatches = await prisma.match.count({
         where: {
           organizationId: validatedData.organizationId,
-          date: {
-            gte: weekStart,
-            lt: weekEnd,
-          },
         },
       })
 
-      if (matchesThisWeek >= 1) {
+      if (totalMatches >= 2) {
         return NextResponse.json(
-          { error: 'FREE plan allows maximum 1 match per week' },
+          { error: 'FREE plan allows maximum 2 matches per organization' },
           { status: 400 }
         )
       }
