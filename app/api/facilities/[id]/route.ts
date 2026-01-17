@@ -116,9 +116,7 @@ export async function PATCH(
         { error: 'Facility not found' },
         { status: 404 }
       )
-    }
-
-    // Check if user is the organization owner
+    }    // Check if user is the organization owner
     if (facility.organization.ownerId !== payload.userId) {
       return NextResponse.json(
         { error: 'Only organization owner can update facilities' },

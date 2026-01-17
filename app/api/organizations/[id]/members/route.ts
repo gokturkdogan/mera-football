@@ -68,6 +68,8 @@ export async function GET(
             name: true,
             email: true,
             phone: true,
+            avatarUrl: true,
+            averageRating: true,
           },
         },
       },
@@ -134,7 +136,7 @@ export async function PATCH(
       })
 
       const adminPlan = admin?.plan || 'FREE'
-      const maxPlayers = adminPlan === 'FREE' ? 10 : 999999
+      const maxPlayers = adminPlan === 'FREE' ? 14 : 999999
 
       const currentCount = await prisma.organizationMember.count({
         where: {
@@ -148,7 +150,7 @@ export async function PATCH(
         currentCount >= maxPlayers
       ) {
         return NextResponse.json(
-          { error: 'Organization has reached maximum capacity (10 players for FREE plan)' },
+          { error: 'Organization has reached maximum capacity (14 players for FREE plan)' },
           { status: 400 }
         )
       }

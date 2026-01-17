@@ -9,6 +9,71 @@ const ratingSchema = z.object({
   comment: z.string().optional(),
 })
 
+const batchRatingSchema = z.object({
+  ratings: z.array(z.object({
+    ratedUserId: z.string(),
+    rating: z.number().min(1).max(5),
+  })),
+})
+
+// Helper function to calculate and update match averages
+async function updateMatchAverages(matchId: string) {
+  // Get all ratings for this match
+  const allRatings = await prisma.matchRating.findMany({
+    where: { matchId },
+  })
+
+  // Get all unique users who were rated in this match
+  const ratedUserIds = [...new Set(allRatings.map(r => r.ratedUserId))]
+
+  // Calculate average for each player
+  for (const userId of ratedUserIds) {
+    const userRatings = allRatings.filter(r => r.ratedUserId === userId)
+    const totalRating = userRatings.reduce((sum, r) => sum + r.rating, 0)
+    const averageRating = totalRating / userRatings.length
+    const ratingCount = userRatings.length
+
+    // Upsert match player average
+    await prisma.matchPlayerAverageRating.upsert({
+      where: {
+        matchId_userId: {
+          matchId,
+          userId,
+        },
+      },
+      update: {
+        averageRating,
+        ratingCount,
+      },
+      create: {
+        matchId,
+        userId,
+        averageRating,
+        ratingCount,
+      },
+    })
+  }
+
+  // Update general average for all players
+  for (const userId of ratedUserIds) {
+    // Get all match averages for this user
+    const matchAverages = await prisma.matchPlayerAverageRating.findMany({
+      where: { userId },
+    })
+
+    if (matchAverages.length > 0) {
+      const totalAverage = matchAverages.reduce((sum, ma) => sum + ma.averageRating, 0)
+      const generalAverage = totalAverage / matchAverages.length
+
+      // Update user's general average
+      await prisma.user.update({
+        where: { id: userId },
+        data: { averageRating: generalAverage },
+      })
+    }
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -60,7 +125,7 @@ export async function GET(
   }
 }
 
-// POST - Create rating
+// POST - Create rating (supports both single and batch)
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -85,7 +150,6 @@ export async function POST(
     }
 
     const body = await request.json()
-    const validatedData = ratingSchema.parse(body)
 
     // Check if match exists and is finished
     const match = await prisma.match.findUnique({
@@ -109,7 +173,6 @@ export async function POST(
       )
     }
 
-
     const isInRoster = match.roster.some((r) => r.userId === payload.userId)
     if (!isInRoster) {
       return NextResponse.json(
@@ -118,40 +181,81 @@ export async function POST(
       )
     }
 
-    const isRatedInRoster = match.roster.some(
-      (r) => r.userId === validatedData.ratedUserId
-    )
-    if (!isRatedInRoster) {
-      return NextResponse.json(
-        { error: 'Rated user must be in match roster' },
-        { status: 400 }
-      )
-    }
+    // Check if batch rating
+    if (body.ratings && Array.isArray(body.ratings)) {
+      // Batch rating
+      const validatedData = batchRatingSchema.parse(body)
+      const results = []
 
-    // Cannot rate yourself
-    if (payload.userId === validatedData.ratedUserId) {
-      return NextResponse.json(
-        { error: 'Cannot rate yourself' },
-        { status: 400 }
-      )
-    }
+      for (const ratingData of validatedData.ratings) {
+        // Validate rated user is in roster
+        const isRatedInRoster = match.roster.some(
+          (r) => r.userId === ratingData.ratedUserId
+        )
+        if (!isRatedInRoster) {
+          continue
+        }
 
-    // Check if already rated
-    const existingRating = await prisma.matchRating.findUnique({
-      where: {
-        matchId_raterId_ratedUserId: {
+
+        // Upsert rating
+        const rating = await prisma.matchRating.upsert({
+          where: {
+            matchId_raterId_ratedUserId: {
+              matchId: params.id,
+              raterId: payload.userId,
+              ratedUserId: ratingData.ratedUserId,
+            },
+          },
+          update: {
+            rating: ratingData.rating,
+          },
+          create: {
+            matchId: params.id,
+            raterId: payload.userId,
+            ratedUserId: ratingData.ratedUserId,
+            rating: ratingData.rating,
+          },
+        })
+
+        results.push(rating)
+      }
+
+      // Update match averages after all ratings are saved
+      await updateMatchAverages(params.id)
+
+      return NextResponse.json({ ratings: results }, { status: 201 })
+    } else {
+      // Single rating (backward compatibility)
+      const validatedData = ratingSchema.parse(body)
+
+      const isRatedInRoster = match.roster.some(
+        (r) => r.userId === validatedData.ratedUserId
+      )
+      if (!isRatedInRoster) {
+        return NextResponse.json(
+          { error: 'Rated user must be in match roster' },
+          { status: 400 }
+        )
+      }
+
+
+      // Upsert rating
+      const rating = await prisma.matchRating.upsert({
+        where: {
+          matchId_raterId_ratedUserId: {
+            matchId: params.id,
+            raterId: payload.userId,
+            ratedUserId: validatedData.ratedUserId,
+          },
+        },
+        update: {
+          rating: validatedData.rating,
+          comment: validatedData.comment,
+        },
+        create: {
           matchId: params.id,
           raterId: payload.userId,
           ratedUserId: validatedData.ratedUserId,
-        },
-      },
-    })
-
-    if (existingRating) {
-      // Update existing rating
-      const rating = await prisma.matchRating.update({
-        where: { id: existingRating.id },
-        data: {
           rating: validatedData.rating,
           comment: validatedData.comment,
         },
@@ -171,35 +275,11 @@ export async function POST(
         },
       })
 
-      return NextResponse.json({ rating })
+      // Update match averages
+      await updateMatchAverages(params.id)
+
+      return NextResponse.json({ rating }, { status: 201 })
     }
-
-    // Create new rating
-    const rating = await prisma.matchRating.create({
-      data: {
-        matchId: params.id,
-        raterId: payload.userId,
-        ratedUserId: validatedData.ratedUserId,
-        rating: validatedData.rating,
-        comment: validatedData.comment,
-      },
-      include: {
-        rater: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        ratedUser: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json({ rating }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -215,4 +295,3 @@ export async function POST(
     )
   }
 }
-

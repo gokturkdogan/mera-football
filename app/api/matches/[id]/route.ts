@@ -44,11 +44,23 @@ export async function GET(
                 id: true,
                 name: true,
                 email: true,
+                avatarUrl: true,
               },
             },
           },
         },
         scores: true,
+        goals: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
         ratings: {
           include: {
             rater: {
@@ -58,6 +70,16 @@ export async function GET(
               },
             },
             ratedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        playerAverages: {
+          include: {
+            user: {
               select: {
                 id: true,
                 name: true,
@@ -175,6 +197,57 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
+            ownerId: true,
+          },
+        },
+        roster: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        scores: true,
+        goals: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        ratings: {
+          include: {
+            rater: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            ratedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        playerAverages: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },

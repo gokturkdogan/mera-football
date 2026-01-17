@@ -355,17 +355,6 @@ export default function FacilityDetailPage() {
                   </div>
                 )}
               </div>
-              <a
-                href={facility.location.includes('<iframe') ? 
-                  (facility.location.match(/src=["']([^"']+)["']/i)?.[1] || facility.location) : 
-                  facility.location}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 underline font-medium"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Google Maps'te Aç
-              </a>
             </CardContent>
           </Card>
 

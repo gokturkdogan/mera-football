@@ -1192,7 +1192,7 @@ export default function OrganizationPage() {
                   <p className="text-4xl font-black text-green-600">
                     {organization?.owner?.plan === 'PREMIUM' 
                       ? approvedMembers.length
-                      : `${approvedMembers.length}/10`}
+                      : `${approvedMembers.length}/14`}
                   </p>
                 </div>
                 <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center">
@@ -1503,31 +1503,36 @@ export default function OrganizationPage() {
                   <div 
                     className="flex transition-transform duration-300 ease-in-out"
                     style={{ 
-                      transform: `translateX(-${currentMemberIndex * (100 / itemsPerPageDesktop)}%)` 
+                      width: `${totalPagesDesktop * 100}%`,
+                      transform: `translateX(-${currentMemberIndex * (100 / totalPagesDesktop)}%)`
                     }}
                   >
-                    {approvedMembers.map((member) => (
-                      <div key={member.id} className="w-1/3 flex-shrink-0 px-2">
-                        <Link
-                          href={`/players/${member.user.id}`}
-                          className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white cursor-pointer"
-                        >
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
-                            {member.user.avatarUrl ? (
-                              <img 
-                                src={member.user.avatarUrl} 
-                                alt={member.user.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              member.user.name.charAt(0).toUpperCase()
-                            )}
+                    {Array.from({ length: totalPagesDesktop }).map((_, pageIndex) => (
+                      <div key={pageIndex} className="flex-shrink-0 flex" style={{ width: `${100 / totalPagesDesktop}%` }}>
+                        {approvedMembers.slice(pageIndex * itemsPerPageDesktop, (pageIndex + 1) * itemsPerPageDesktop).map((member) => (
+                          <div key={member.id} className="flex-shrink-0 px-2" style={{ width: `${100 / itemsPerPageDesktop}%` }}>
+                            <Link
+                              href={`/players/${member.user.id}`}
+                              className="flex items-center gap-3 p-4 border-2 rounded-lg hover:border-green-400 hover:shadow-md transition-all bg-white cursor-pointer"
+                            >
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                                {member.user.avatarUrl ? (
+                                  <img 
+                                    src={member.user.avatarUrl} 
+                                    alt={member.user.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  member.user.name.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 truncate">{member.user.name}</p>
+                                <p className="text-xs text-gray-600 truncate">{member.user.email}</p>
+                              </div>
+                            </Link>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">{member.user.name}</p>
-                            <p className="text-xs text-gray-600 truncate">{member.user.email}</p>
-                          </div>
-                        </Link>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -1757,12 +1762,22 @@ export default function OrganizationPage() {
                                         {match.status === 'FINISHED' ? (
                                           <>
                                             <CheckCircle2 className="w-3 h-3" />
-                                            Tamamlandı
+                                            Oynandı
                                           </>
                                         ) : match.status === 'UPCOMING' ? (
                                           <>
                                             <Calendar className="w-3 h-3" />
-                                            Yaklaşan
+                                            Kadrolar hazır
+                                          </>
+                                        ) : match.status === 'DRAFT' ? (
+                                          <>
+                                            <FileText className="w-3 h-3" />
+                                            Kadro kuruluyor
+                                          </>
+                                        ) : match.status === 'PUBLISHED' ? (
+                                          <>
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            Tamamlandı
                                           </>
                                         ) : (
                                           match.status
@@ -1833,6 +1848,23 @@ export default function OrganizationPage() {
                         <ChevronRight className="w-6 h-6" />
                       </Button>
                     </>
+                  )}
+                  
+                  {/* Dots Indicator */}
+                  {(organization?.matches?.length || 0) > 1 && (
+                    <div className="flex justify-center gap-2 mt-6">
+                      {(organization?.matches || []).map((_, index) => (
+                        <button
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            index === currentMatchIndex
+                              ? 'bg-green-600 w-8'
+                              : 'bg-gray-300 hover:bg-gray-400'
+                          }`}
+                          onClick={() => setCurrentMatchIndex(index)}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               )}

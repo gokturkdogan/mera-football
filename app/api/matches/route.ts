@@ -178,6 +178,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Automatically create ACCEPTED attendance for owner
+    await prisma.matchAttendance.create({
+      data: {
+        matchId: match.id,
+        userId: organization.ownerId,
+        status: 'ACCEPTED',
+      },
+    })
+
     return NextResponse.json({ match }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {

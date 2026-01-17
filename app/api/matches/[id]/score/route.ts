@@ -44,7 +44,25 @@ export async function GET(
       where: { matchId: params.id },
     })
 
-    return NextResponse.json({ score })
+    const goals = await prisma.matchGoal.findMany({
+      where: { matchId: params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    })
+
+    return NextResponse.json({ 
+      score: score ? {
+        ...score,
+        goals,
+      } : null
+    })
   } catch (error) {
     console.error('Get score error:', error)
     return NextResponse.json(
@@ -120,31 +138,67 @@ export async function POST(
       }
     }
 
+    // Delete existing goals for this match
+    await prisma.matchGoal.deleteMany({
+      where: { matchId: params.id },
+    })
+
+    // Create new goals
+    const goalsToCreate = [
+      ...(validatedData.teamAGoals || []).map((g) => ({
+        matchId: params.id,
+        userId: g.userId,
+        team: 'A',
+        minute: g.minute || null,
+      })),
+      ...(validatedData.teamBGoals || []).map((g) => ({
+        matchId: params.id,
+        userId: g.userId,
+        team: 'B',
+        minute: g.minute || null,
+      })),
+    ]
+
+    if (goalsToCreate.length > 0) {
+      await prisma.matchGoal.createMany({
+        data: goalsToCreate,
+      })
+    }
+
     // Create or update score
     const score = await prisma.matchScore.upsert({
       where: { matchId: params.id },
       update: {
         teamAScore: validatedData.teamAScore,
         teamBScore: validatedData.teamBScore,
-        teamAGoals: validatedData.teamAGoals || [],
-        teamBGoals: validatedData.teamBGoals || [],
       },
       create: {
         matchId: params.id,
         teamAScore: validatedData.teamAScore,
         teamBScore: validatedData.teamBScore,
-        teamAGoals: validatedData.teamAGoals || [],
-        teamBGoals: validatedData.teamBGoals || [],
       },
     })
 
-    // Update match status to FINISHED
-    await prisma.match.update({
-      where: { id: params.id },
-      data: { status: 'FINISHED' },
+    // Fetch goals for the match
+    const goals = await prisma.matchGoal.findMany({
+      where: { matchId: params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
     })
 
-    return NextResponse.json({ score })
+    return NextResponse.json({ 
+      score: {
+        ...score,
+        goals,
+      }
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

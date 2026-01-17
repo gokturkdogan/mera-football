@@ -173,9 +173,7 @@
 
 .animate-slideInRight {
   animation: slideInRight 0.3s ease-out;
-}
-
-.animate-slideInTop {
+}.animate-slideInTop {
   animation: slideInTop 0.3s ease-out;
 }
 

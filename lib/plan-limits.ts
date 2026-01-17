@@ -8,7 +8,7 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<AdminPlan, PlanLimits> = {
   FREE: {
-    maxPlayers: 10,
+    maxPlayers: 14,
     maxMatchesPerWeek: 1,
   },
   PREMIUM: {

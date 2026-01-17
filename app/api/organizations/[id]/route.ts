@@ -288,7 +288,7 @@ export async function DELETE(
     await prisma.organization.delete({
       where: { id: params.id },
     })
-
+    
     return NextResponse.json({ message: 'Organization deleted successfully' })
   } catch (error) {
     console.error('Delete organization error:', error)

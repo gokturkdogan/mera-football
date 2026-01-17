@@ -139,6 +139,16 @@ export async function POST(
       },
     })
 
+    // If player declined and is in roster, remove from roster
+    if (status === 'DECLINED') {
+      await prisma.matchRoster.deleteMany({
+        where: {
+          matchId: params.id,
+          userId: payload.userId,
+        },
+      })
+    }
+
     return NextResponse.json({ attendance })
   } catch (error) {
     if (error instanceof z.ZodError) {
