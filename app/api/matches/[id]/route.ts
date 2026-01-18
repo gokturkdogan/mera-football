@@ -99,25 +99,7 @@ export async function GET(
       )
     }
 
-    // Check if user has access (member of organization)
-    const isMember = await prisma.organizationMember.findUnique({
-      where: {
-        userId_organizationId: {
-          userId: payload.userId,
-          organizationId: match.organizationId,
-        },
-        status: 'APPROVED',
-      },
-    })
-
-    const isOwner = match.organization.ownerId === payload.userId
-
-    if (!isMember && !isOwner) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
-    }
+    // Everyone can view matches (access control will be added later in organization settings)
 
     return NextResponse.json({ match })
   } catch (error) {

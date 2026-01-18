@@ -28,7 +28,9 @@ import {
   Star,
   StarHalf,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  LogIn,
+  Home
 } from 'lucide-react'
 
 interface Player {
@@ -64,10 +66,25 @@ export default function PlayersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [ratingSortOrder, setRatingSortOrder] = useState<'none' | 'desc' | 'asc'>('desc')
+  const [user, setUser] = useState<any>(null)
+  const [isUnauthorized, setIsUnauthorized] = useState(false)
 
   useEffect(() => {
+    fetchUser()
     fetchPlayers()
   }, [])
+
+  const fetchUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+      }
+    } catch (error) {
+      // User not logged in
+    }
+  }
 
   useEffect(() => {
     let filtered = players
@@ -118,7 +135,9 @@ export default function PlayersPage() {
       })
       if (!res.ok) {
         if (res.status === 401) {
-          router.push('/login')
+          setIsUnauthorized(true)
+          setPlayers([])
+          setFilteredPlayers([])
           return
         }
         throw new Error('Failed to fetch players')
@@ -126,8 +145,10 @@ export default function PlayersPage() {
       const data = await res.json()
       setPlayers(data.players || [])
       setFilteredPlayers(data.players || [])
+      setIsUnauthorized(false)
     } catch (error) {
       console.error('Error fetching players:', error)
+      setIsUnauthorized(true)
     } finally {
       setLoading(false)
     }
@@ -145,30 +166,32 @@ export default function PlayersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-black mb-2">Oyuncular</h1>
-              <p className="text-xl opacity-90">
-                Sistemdeki tüm oyuncuları görüntüleyin ve keşfedin
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30">
-                <Users className="w-10 h-10 text-white" />
+      {/* Blurred Background Content */}
+      <div className={isUnauthorized ? 'blur-md pointer-events-none select-none opacity-50' : ''}>
+        {/* Hero Section */}
+        <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-12">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-black mb-2">Oyuncular</h1>
+                <p className="text-xl opacity-90">
+                  Sistemdeki tüm oyuncuları görüntüleyin ve keşfedin
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30">
+                  <Users className="w-10 h-10 text-white" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Search Bar */}
+        <div className="container mx-auto px-4 py-8">
+          {/* Search Bar */}
         <Card className="mb-6 border-2">
           <CardContent className="pt-6">
             <div className="relative">
@@ -529,7 +552,52 @@ export default function PlayersPage() {
             </p>
           </CardContent>
         </Card>
+        </div>
       </div>
+
+      {/* Unauthorized Warning - Overlay */}
+      {isUnauthorized && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 px-4 bg-black/20 backdrop-blur-sm">
+          <Card className="w-full max-w-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50 shadow-2xl">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-amber-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-amber-900 mb-2">
+                    Üyelik Gerekli
+                  </h3>
+                  <p className="text-amber-800 mb-4">
+                    Bu içerikleri sadece platform üyelerimiz görüntüleyebilmektedir. Oyuncuları görmek için lütfen giriş yapın veya kayıt olun.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link href="/login">
+                      <Button className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Giriş Yap
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button variant="outline" className="w-full sm:w-auto border-amber-600 text-amber-700 hover:bg-amber-50">
+                        Kayıt Ol
+                      </Button>
+                    </Link>
+                    <Link href="/">
+                      <Button variant="ghost" className="w-full sm:w-auto text-amber-700 hover:bg-amber-100">
+                        <Home className="w-4 h-4 mr-2" />
+                        Anasayfaya Dön
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -353,22 +353,22 @@ export default function PlansPage() {
 
       {/* CTA Section */}
       {!user && (
-        <section className="container mx-auto px-4 py-16">
-          <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-3xl p-12 text-white text-center shadow-2xl">
-            <h3 className="text-4xl font-black mb-4">
+        <section className="container mx-auto px-4 py-8 md:py-16">
+          <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-2xl md:rounded-3xl p-6 md:p-12 text-white text-center shadow-2xl">
+            <h3 className="text-2xl md:text-4xl font-black mb-3 md:mb-4">
               Hemen Başlayın
             </h3>
-            <p className="text-xl mb-8 opacity-95 max-w-2xl mx-auto">
+            <p className="text-base md:text-xl mb-6 md:mb-8 opacity-95 max-w-2xl mx-auto">
               Size en uygun planı seçin ve halısaha futbol organizasyonlarınızı yönetmeye başlayın
             </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/register?role=PLAYER">
-                <Button size="lg" variant="secondary" className="text-lg px-8 bg-white text-green-600 hover:bg-gray-100">
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-stretch sm:items-center">
+              <Link href="/register?role=PLAYER" className="w-full sm:w-auto">
+                <Button size="lg" variant="secondary" className="w-full sm:w-auto text-base md:text-lg px-6 md:px-8 bg-white text-green-600 hover:bg-gray-100">
                   Oyuncu Olarak Başla
                 </Button>
               </Link>
-              <Link href="/register?role=ADMIN">
-                <Button size="lg" variant="outline" className="text-lg px-8 bg-transparent border-2 border-white text-white hover:bg-white/10">
+              <Link href="/register?role=ADMIN" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto text-base md:text-lg px-6 md:px-8 bg-transparent border-2 border-white text-white hover:bg-white/10">
                   Yönetici Olarak Başla
                 </Button>
               </Link>

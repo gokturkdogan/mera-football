@@ -19,7 +19,10 @@ import {
   ArrowRight,
   Loader2,
   Target,
-  User
+  User,
+  Shield,
+  LogIn,
+  Home
 } from 'lucide-react'
 
 interface Organization {
@@ -46,10 +49,25 @@ export default function OrganizationsPage() {
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [user, setUser] = useState<any>(null)
+  const [isUnauthorized, setIsUnauthorized] = useState(false)
 
   useEffect(() => {
+    fetchUser()
     fetchOrganizations()
   }, [])
+
+  const fetchUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+      }
+    } catch (error) {
+      // User not logged in
+    }
+  }
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -73,7 +91,9 @@ export default function OrganizationsPage() {
       })
       if (!res.ok) {
         if (res.status === 401) {
-          router.push('/login')
+          setIsUnauthorized(true)
+          setOrganizations([])
+          setFilteredOrganizations([])
           return
         }
         throw new Error('Failed to fetch organizations')
@@ -81,8 +101,10 @@ export default function OrganizationsPage() {
       const data = await res.json()
       setOrganizations(data.organizations || [])
       setFilteredOrganizations(data.organizations || [])
+      setIsUnauthorized(false)
     } catch (error) {
       console.error('Error fetching organizations:', error)
+      setIsUnauthorized(true)
     } finally {
       setLoading(false)
     }
@@ -100,66 +122,68 @@ export default function OrganizationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-black mb-2">Organizasyonlar</h1>
-              <p className="text-xl opacity-90">
-                Sistemdeki tüm organizasyonları görüntüleyin ve keşfedin
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl">
-                <Building2 className="w-10 h-10 text-white" />
+      {/* Blurred Background Content */}
+      <div className={isUnauthorized ? 'blur-md pointer-events-none select-none opacity-50' : ''}>
+        {/* Hero Section */}
+        <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-12">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-black mb-2">Organizasyonlar</h1>
+                <p className="text-xl opacity-90">
+                  Sistemdeki tüm organizasyonları görüntüleyin ve keşfedin
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl">
+                  <Building2 className="w-10 h-10 text-white" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats Card */}
-        <Card className="mb-6 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
-                <p className="text-4xl font-black text-green-600">{organizations.length}</p>
+        <div className="container mx-auto px-4 py-8">
+            {/* Stats Card */}
+          <Card className="mb-6 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
+                  <p className="text-4xl font-black text-green-600">{organizations.length}</p>
+                </div>
+                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Trophy className="w-8 h-8 text-white" />
+                </div>
               </div>
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                <Trophy className="w-8 h-8 text-white" />
+            </CardContent>
+          </Card>
+
+          {/* Search Bar */}
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Organizasyon adı, açıklama, yönetici adı veya email ile ara..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-6 text-lg"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              {searchTerm && (
+                <p className="text-sm text-gray-600 mt-2">
+                  {filteredOrganizations.length} organizasyon bulundu
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Search Bar */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Organizasyon adı, açıklama, yönetici adı veya email ile ara..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-6 text-lg"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            </div>
-            {searchTerm && (
-              <p className="text-sm text-gray-600 mt-2">
-                {filteredOrganizations.length} organizasyon bulundu
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Organizations Table */}
+          {/* Organizations Table */}
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Organizasyon Listesi</CardTitle>
@@ -319,7 +343,52 @@ export default function OrganizationsPage() {
             </p>
           </CardContent>
         </Card>
+        </div>
       </div>
+
+      {/* Unauthorized Warning - Overlay */}
+      {isUnauthorized && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 px-4 bg-black/20 backdrop-blur-sm">
+          <Card className="w-full max-w-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50 shadow-2xl">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-amber-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-amber-900 mb-2">
+                    Üyelik Gerekli
+                  </h3>
+                  <p className="text-amber-800 mb-4">
+                    Bu içerikleri sadece platform üyelerimiz görüntüleyebilmektedir. Organizasyonları görmek için lütfen giriş yapın veya kayıt olun.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link href="/login">
+                      <Button className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Giriş Yap
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button variant="outline" className="w-full sm:w-auto border-amber-600 text-amber-700 hover:bg-amber-50">
+                        Kayıt Ol
+                      </Button>
+                    </Link>
+                    <Link href="/">
+                      <Button variant="ghost" className="w-full sm:w-auto text-amber-700 hover:bg-amber-100">
+                        <Home className="w-4 h-4 mr-2" />
+                        Anasayfaya Dön
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

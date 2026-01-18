@@ -382,13 +382,13 @@ export default function ProfilePage() {
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 items-start">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
             {/* Left Side - Profile Info */}
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full min-w-0">
               {/* Avatar */}
-              <div className="relative group">
-                <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl overflow-hidden">
+              <div className="relative group flex-shrink-0">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30 shadow-xl overflow-hidden">
                   {user?.avatarUrl ? (
                     <img 
                       src={user.avatarUrl} 
@@ -396,7 +396,7 @@ export default function ProfilePage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-4xl font-black text-white">
+                    <span className="text-3xl sm:text-4xl font-black text-white">
                       {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   )}
@@ -435,11 +435,11 @@ export default function ProfilePage() {
                   }}
                 />
               </div>
-              <div className="flex-1">
-                <h1 className="text-4xl font-black mb-2">{user?.name}</h1>
-                <p className="text-xl opacity-90 mb-3 flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  {user?.email}
+              <div className="flex-1 min-w-0 w-full sm:w-auto">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black mb-2 break-words">{user?.name}</h1>
+                <p className="text-base sm:text-lg md:text-xl opacity-90 mb-3 flex items-center gap-2 min-w-0">
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="truncate">{user?.email}</span>
                 </p>
               
               {/* Avatar Modal */}
@@ -667,22 +667,22 @@ export default function ProfilePage() {
                 </DialogContent>
               </Dialog>
               
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 md:gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
                       isAdmin 
                         ? 'bg-yellow-400 text-yellow-900' 
                         : 'bg-blue-400 text-blue-900'
                     }`}>
                       {isAdmin ? (
                         <>
-                          <Crown className="w-4 h-4" />
-                          Yönetici
+                          <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span>Yönetici</span>
                         </>
                       ) : (
                         <>
-                          <User className="w-4 h-4" />
-                          Oyuncu
+                          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span>Oyuncu</span>
                         </>
                       )}
                     </span>
@@ -690,31 +690,33 @@ export default function ProfilePage() {
                       onClick={() => setShowRoleChangeModal(true)}
                       size="sm"
                       variant="outline"
-                      className="border-2 border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+                      className="border-2 border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
                     >
                       {isAdmin ? (
                         <>
-                          <User className="w-4 h-4 mr-1" />
-                          Oyuncu Rolüne Geç
+                          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                          <span className="hidden sm:inline">Oyuncu Rolüne Geç</span>
+                          <span className="sm:hidden">Oyuncu</span>
                         </>
                       ) : (
                         <>
-                          <Crown className="w-4 h-4 mr-1" />
-                          Yönetici Rolüne Geç
+                          <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                          <span className="hidden sm:inline">Yönetici Rolüne Geç</span>
+                          <span className="sm:hidden">Yönetici</span>
                         </>
                       )}
                     </Button>
                   </div>
                   {user?.phone && (
-                    <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      {user.phone}
+                    <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 rounded-full text-xs sm:text-sm backdrop-blur-sm flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+                      <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[150px] sm:max-w-none">{user.phone}</span>
                     </span>
                   )}
                   {user?.position && (
-                    <span className="px-4 py-2 bg-white/20 rounded-full text-sm backdrop-blur-sm flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      {user.position}
+                    <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/20 rounded-full text-xs sm:text-sm backdrop-blur-sm flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+                      <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span>{user.position}</span>
                     </span>
                   )}
                 </div>
@@ -723,18 +725,18 @@ export default function ProfilePage() {
 
             {/* Right Side - Plan Status (only for admins) */}
             {isAdmin && (
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl border-2 border-white/20 p-6 shadow-2xl">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl border-2 border-white/20 p-3 sm:p-4 md:p-6 shadow-2xl w-full max-w-full overflow-hidden">
                 <div className="relative">
                   {/* Premium için animasyonlu arka plan */}
                   {adminPlan === 'PREMIUM' && (
                     <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-400/20 to-amber-400/20 rounded-2xl animate-pulse"></div>
                   )}
                   
-                  <div className="relative">
-                    <div className="flex items-center gap-4 mb-4">
+                  <div className="relative p-2 sm:p-3 md:p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
                       {/* Icon Container */}
                       <div className="relative flex-shrink-0">
-                        <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-xl relative overflow-hidden ${
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-xl flex items-center justify-center shadow-xl relative overflow-hidden ${
                           adminPlan === 'PREMIUM' 
                             ? 'bg-gradient-to-br from-yellow-500 via-orange-500 to-amber-600' 
                             : 'bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600'
@@ -744,9 +746,9 @@ export default function ProfilePage() {
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                           )}
                           {adminPlan === 'PREMIUM' ? (
-                            <Star className="w-8 h-8 text-white fill-white relative z-10 drop-shadow-lg" />
+                            <Star className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white fill-white relative z-10 drop-shadow-lg" />
                           ) : (
-                            <User className="w-8 h-8 text-white relative z-10 drop-shadow-lg" />
+                            <User className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white relative z-10 drop-shadow-lg" />
                           )}
                         </div>
                         {/* Premium için ekstra glow efekti */}
@@ -756,26 +758,26 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Plan Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-white/80 uppercase tracking-wide">
+                      <div className="flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <span className="text-[10px] sm:text-xs font-semibold text-white/80 uppercase tracking-wide">
                             Plan Durumu
                           </span>
                           {adminPlan === 'PREMIUM' && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-300/30 rounded-full border border-yellow-300/50">
-                              <div className="w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse"></div>
-                              <span className="text-xs font-bold text-white">Aktif</span>
+                            <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-yellow-300/30 rounded-full border border-yellow-300/50">
+                              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-yellow-300 rounded-full animate-pulse"></div>
+                              <span className="text-[10px] sm:text-xs font-bold text-white">Aktif</span>
                             </div>
                           )}
                         </div>
-                        <h3 className={`text-2xl font-black ${
+                        <h3 className={`text-lg sm:text-xl md:text-2xl font-black break-words ${
                           adminPlan === 'PREMIUM' 
                             ? 'bg-gradient-to-r from-yellow-300 via-orange-300 to-amber-300 bg-clip-text text-transparent' 
                             : 'text-white'
                         }`}>
                           {adminPlan === 'PREMIUM' ? 'Premium' : 'Ücretsiz'}
                         </h3>
-                        <p className="text-sm text-white/80 mt-1">
+                        <p className="text-[11px] sm:text-xs md:text-sm text-white/80 mt-0.5 sm:mt-1 break-words">
                           {adminPlan === 'PREMIUM' 
                             ? 'Sınırsız organizasyon ve maç'
                             : 'Sınırlı organizasyon ve maç'}
@@ -785,23 +787,23 @@ export default function ProfilePage() {
 
                     {/* Premium için özel özellikler listesi */}
                     {adminPlan === 'PREMIUM' && (
-                      <div className="mt-4 pt-4 border-t border-white/20">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-300" />
-                            <span className="text-xs text-white/90 font-medium">Sınırsız Org.</span>
+                      <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-white/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-300 flex-shrink-0" />
+                            <span className="text-[11px] sm:text-xs text-white/90 font-medium break-words">Sınırsız Org.</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-300" />
-                            <span className="text-xs text-white/90 font-medium">Sınırsız Maç</span>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-300 flex-shrink-0" />
+                            <span className="text-[11px] sm:text-xs text-white/90 font-medium break-words">Sınırsız Maç</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-300" />
-                            <span className="text-xs text-white/90 font-medium">Öncelikli Destek</span>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-300 flex-shrink-0" />
+                            <span className="text-[11px] sm:text-xs text-white/90 font-medium break-words">Öncelikli Destek</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-300" />
-                            <span className="text-xs text-white/90 font-medium">Gelişmiş Özellikler</span>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-300 flex-shrink-0" />
+                            <span className="text-[11px] sm:text-xs text-white/90 font-medium break-words">Gelişmiş Özellikler</span>
                           </div>
                         </div>
                       </div>
@@ -809,11 +811,11 @@ export default function ProfilePage() {
 
                     {/* Free plan için yükselt butonu */}
                     {adminPlan === 'FREE' && (
-                      <div className="mt-4">
-                        <Link href="/plans">
-                          <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-2 border-white/30 backdrop-blur-sm transition-all">
-                            <Star className="w-4 h-4 mr-2" />
-                            Premium'a Yükselt
+                      <div className="mt-2 sm:mt-3 md:mt-4">
+                        <Link href="/plans" className="block w-full">
+                          <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-2 border-white/30 backdrop-blur-sm transition-all text-xs sm:text-sm md:text-base py-2 sm:py-2.5">
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                            <span className="whitespace-nowrap">Premium'a Yükselt</span>
                           </Button>
                         </Link>
                       </div>

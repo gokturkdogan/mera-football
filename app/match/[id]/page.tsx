@@ -285,6 +285,18 @@ export default function MatchPage() {
         credentials: 'include',
       })
       if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Maç bulunamadı veya erişim izniniz yok' }))
+        if (res.status === 404) {
+          showToast('Maç bulunamadı', 'error')
+        } else if (res.status === 403) {
+          showToast('Bu maça erişim izniniz yok. Organizasyonun üyesi olmanız gerekiyor.', 'error')
+        } else if (res.status === 401) {
+          showToast('Giriş yapmanız gerekiyor', 'error')
+          router.push('/login')
+          return
+        } else {
+          showToast(errorData.error || 'Maç yüklenirken bir hata oluştu', 'error')
+        }
         router.push('/dashboard')
         return
       }
