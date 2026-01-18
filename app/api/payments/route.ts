@@ -3,6 +3,9 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const iyzipayConfig = {
   apiKey: process.env.IYZICO_API_KEY || '',
   secretKey: process.env.IYZICO_SECRET_KEY || '',

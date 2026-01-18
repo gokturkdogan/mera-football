@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 import { verifyToken } from '@/lib/auth'
 import { cloudinary } from '@/lib/cloudinary'
 import { prisma } from '@/lib/prisma'
