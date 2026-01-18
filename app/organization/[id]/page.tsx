@@ -2562,8 +2562,8 @@ export default function OrganizationPage() {
                       crop={crop}
                       zoom={zoom}
                       aspect={1}
-                      onCropChange={uploadingAvatar ? undefined : setCrop}
-                      onZoomChange={uploadingAvatar ? undefined : setZoom}
+                      onCropChange={uploadingAvatar ? () => {} : setCrop}
+                      onZoomChange={uploadingAvatar ? () => {} : setZoom}
                       onCropComplete={onCropComplete}
                       cropShape="round"
                       showGrid={false}
@@ -2760,9 +2760,9 @@ export default function OrganizationPage() {
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm font-semibold text-gray-900 truncate">{member.user.name}</span>
                               {member.user.role === 'ADMIN' ? (
-                                <Crown className="w-3 h-3 text-yellow-600 flex-shrink-0" title="Yönetici" />
+                                <Crown className="w-3 h-3 text-yellow-600 flex-shrink-0" />
                               ) : (
-                                <User className="w-3 h-3 text-green-600 flex-shrink-0" title="Oyuncu" />
+                                <User className="w-3 h-3 text-green-600 flex-shrink-0" />
                               )}
                             </div>
                             <div className="flex items-center gap-1 mt-0.5">

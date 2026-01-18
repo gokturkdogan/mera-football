@@ -181,7 +181,7 @@ export async function POST(
     }
 
     // Update user's totalGoals for affected users
-    const allUserIds = new Set([...existingGoalCounts.keys(), ...newGoalCounts.keys()])
+    const allUserIds = Array.from(new Set([...Array.from(existingGoalCounts.keys()), ...Array.from(newGoalCounts.keys())]))
     for (const userId of allUserIds) {
       const existingCount = existingGoalCounts.get(userId) || 0
       const newCount = newGoalCounts.get(userId) || 0

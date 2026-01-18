@@ -394,9 +394,9 @@ export default function PlayersPage() {
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-gray-900 truncate">{player.name}</span>
                                 {player.role === 'ADMIN' ? (
-                                  <Crown className="w-4 h-4 text-yellow-600 flex-shrink-0" title="Yönetici" />
+                                  <Crown className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                                 ) : (
-                                  <User className="w-4 h-4 text-green-600 flex-shrink-0" title="Oyuncu" />
+                                  <User className="w-4 h-4 text-green-600 flex-shrink-0" />
                                 )}
                               </div>
                               <div className="flex items-center gap-1 mt-1">

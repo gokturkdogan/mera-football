@@ -8,6 +8,7 @@ interface DialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
+  disabled?: boolean
 }
 
 interface DialogContentProps {
@@ -21,10 +22,12 @@ interface DialogHeaderProps {
 
 interface DialogTitleProps {
   children: React.ReactNode
+  className?: string
 }
 
 interface DialogDescriptionProps {
   children: React.ReactNode
+  className?: string
 }
 
 const DialogContext = React.createContext<{
@@ -98,12 +101,12 @@ export function DialogHeader({ children }: DialogHeaderProps) {
   return <div className="px-6 pt-6 pb-4 border-b border-gray-200">{children}</div>
 }
 
-export function DialogTitle({ children }: DialogTitleProps) {
-  return <h2 className="text-2xl font-bold text-gray-900">{children}</h2>
+export function DialogTitle({ children, className = '' }: DialogTitleProps) {
+  return <h2 className={`text-2xl font-bold text-gray-900 ${className}`}>{children}</h2>
 }
 
-export function DialogDescription({ children }: DialogDescriptionProps) {
-  return <p className="text-sm text-gray-600 mt-2">{children}</p>
+export function DialogDescription({ children, className = '' }: DialogDescriptionProps) {
+  return <p className={`text-sm text-gray-600 mt-2 ${className}`}>{children}</p>
 }
 
 export function DialogBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -114,7 +117,7 @@ export function DialogBody({ children, className = '' }: { children: React.React
   )
 }
 
-export function DialogFooter({ children }: { children: React.ReactNode }) {
-  return <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">{children}</div>
+export function DialogFooter({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`px-6 py-4 border-t border-gray-200 flex justify-end gap-2 ${className}`}>{children}</div>
 }
 

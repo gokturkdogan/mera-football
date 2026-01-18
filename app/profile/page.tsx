@@ -72,9 +72,9 @@ export default function ProfilePage() {
     phone: '',
     position: '' as string | null,
     strongFoot: '' as string | null,
-    height: '' as number | null,
-    weight: '' as number | null,
-    age: '' as number | null,
+    height: null as number | null,
+    weight: null as number | null,
+    age: null as number | null,
     showPhone: false,
     showPosition: false,
     showStrongFoot: false,
@@ -601,12 +601,11 @@ export default function ProfilePage() {
                           crop={crop}
                           zoom={zoom}
                           aspect={1}
-                          onCropChange={uploadingAvatar ? undefined : setCrop}
-                          onZoomChange={uploadingAvatar ? undefined : setZoom}
+                          onCropChange={uploadingAvatar ? () => {} : setCrop}
+                          onZoomChange={uploadingAvatar ? () => {} : setZoom}
                           onCropComplete={onCropComplete}
                           cropShape="round"
                           showGrid={false}
-                          disabled={uploadingAvatar}
                         />
                         {uploadingAvatar && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">

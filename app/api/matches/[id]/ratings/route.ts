@@ -24,7 +24,7 @@ async function updateMatchAverages(matchId: string) {
   })
 
   // Get all unique users who were rated in this match
-  const ratedUserIds = [...new Set(allRatings.map(r => r.ratedUserId))]
+  const ratedUserIds = Array.from(new Set(allRatings.map(r => r.ratedUserId)))
 
   // Calculate average for each player
   for (const userId of ratedUserIds) {

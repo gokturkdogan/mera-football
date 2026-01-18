@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import Iyzipay from 'iyzipay'
 
 const iyzipayConfig = {
   apiKey: process.env.IYZICO_API_KEY || '',
   secretKey: process.env.IYZICO_SECRET_KEY || '',
   uri: process.env.IYZICO_BASE_URL || 'https://api.iyzipay.com',
 }
-
-const iyzipay = new Iyzipay(iyzipayConfig)
 
 const createPaymentSchema = z.object({
   plan: z.enum(['PREMIUM']),
@@ -53,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Admin buys premium for all their organizations
 
     // Create payment request
-    const request = {
+    const paymentRequest = {
       locale: 'tr',
       conversationId: `ADMIN_${payload.userId}_${Date.now()}`,
       price: validatedData.price.toFixed(2),
@@ -110,8 +107,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Make payment (wrap callback in Promise)
+    const Iyzipay = (await import('iyzipay')).default
+    const iyzipay = new Iyzipay(iyzipayConfig)
+    
     const paymentResult = await new Promise<any>((resolve, reject) => {
-      iyzipay.payment.create(request, (err: any, result: any) => {
+      iyzipay.payment.create(paymentRequest, (err: any, result: any) => {
         if (err) {
           reject(err)
         } else {
