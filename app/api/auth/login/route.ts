@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { comparePassword, generateToken } from '@/lib/auth'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
