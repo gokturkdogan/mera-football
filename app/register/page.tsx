@@ -347,9 +347,15 @@ export default function RegisterPage() {
                 <p className="text-gray-600 leading-relaxed mt-3">
                   amaçlarıyla işlenmekte ve platform içerisinde görüntülenmektedir.
                 </p>
-                <p className="text-gray-600 leading-relaxed">
-                  Bu bilgiler; organizasyon listeleme sayfalarında, maç kadrolarında ve ilgili kullanıcı profillerinde, platformun işleyişi gereği diğer kullanıcılar tarafından görülebilir.
-                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                  <p className="text-gray-700 leading-relaxed text-sm">
+                    <strong>Önemli Güvenlik Notu:</strong> Bu bilgiler (isim, soyisim, iletişim bilgileri vb.) 
+                    <strong> yalnızca platforma üye olan ve giriş yapmış kullanıcılar</strong> tarafından görülebilir. 
+                    Platforma üye olmayan veya giriş yapmamış kişiler bu bilgilere erişemez. 
+                    Bu bilgiler; organizasyon listeleme sayfalarında, maç kadrolarında ve ilgili kullanıcı profillerinde, 
+                    platformun işleyişi gereği <strong>sadece diğer üye kullanıcılar</strong> tarafından görülebilir.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -401,7 +407,10 @@ export default function RegisterPage() {
                   amaçlarıyla sınırlı olarak işlenir.
                 </p>
                 <p className="text-gray-600 leading-relaxed">
-                  MeraFootball, kişisel verileri üçüncü kişilerle paylaşmaz; yalnızca platformun işlevselliği kapsamında ve kullanıcıların açık rızası doğrultusunda görüntülenmesini sağlar.
+                  MeraFootball, kişisel verilerinizi <strong>platform dışındaki üçüncü kişilerle paylaşmaz</strong>; 
+                  yalnızca platformun işlevselliği kapsamında ve kullanıcıların açık rızası doğrultusunda, 
+                  <strong> sadece platform üyeleri arasında</strong> görüntülenmesini sağlar. 
+                  Platforma üye olmayan kişiler bu bilgilere erişemez.
                 </p>
               </div>
 
