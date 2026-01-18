@@ -56,6 +56,64 @@ export async function GET(
       status: om.status,
     }))
 
+    // Get statistics from User table
+    const totalMatches = player.totalMatches || 0
+    const totalGoals = player.totalGoals || 0
+
+    // Get match history (last 10 matches)
+    const matchHistory = await prisma.matchRoster.findMany({
+      where: {
+        userId: params.id,
+      },
+      include: {
+        match: {
+          include: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            scores: true,
+            playerAverages: {
+              where: {
+                userId: params.id,
+              },
+            },
+            goals: {
+              where: {
+                userId: params.id,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        match: {
+          date: 'desc',
+        },
+      },
+      take: 10,
+    })
+
+    const formattedMatchHistory = matchHistory.map((mr) => ({
+      id: mr.match.id,
+      date: mr.match.date,
+      time: mr.match.time,
+      venue: mr.match.venue,
+      status: mr.match.status,
+      organization: {
+        id: mr.match.organization.id,
+        name: mr.match.organization.name,
+      },
+      scores: mr.match.scores ? {
+        teamAScore: mr.match.scores.teamAScore,
+        teamBScore: mr.match.scores.teamBScore,
+      } : null,
+      averageRating: mr.match.playerAverages.length > 0 ? mr.match.playerAverages[0].averageRating : null,
+      goalsCount: mr.match.goals.length,
+    }))
+
     return NextResponse.json({
       player: {
         id: player.id,
@@ -76,8 +134,14 @@ export async function GET(
         showAge: player.showAge,
         role: player.role,
         plan: player.plan,
+        averageRating: player.averageRating,
         createdAt: player.createdAt,
         organizations,
+        statistics: {
+          totalMatches,
+          totalGoals,
+        },
+        matchHistory: formattedMatchHistory,
       },
     })
   } catch (error) {

@@ -138,31 +138,65 @@ export async function POST(
       }
     }
 
+    // Get existing goals for this match to calculate differences
+    const existingGoals = await prisma.matchGoal.findMany({
+      where: { matchId: params.id },
+    })
+
+    // Count goals per user for existing and new goals
+    const existingGoalCounts = new Map<string, number>()
+    existingGoals.forEach(g => {
+      existingGoalCounts.set(g.userId, (existingGoalCounts.get(g.userId) || 0) + 1)
+    })
+
+    const newGoalCounts = new Map<string, number>()
+    const goalsToCreate = [
+      ...(validatedData.teamAGoals || []).map((g) => ({
+        matchId: params.id,
+        userId: g.userId,
+        team: 'A' as const,
+        minute: g.minute || null,
+      })),
+      ...(validatedData.teamBGoals || []).map((g) => ({
+        matchId: params.id,
+        userId: g.userId,
+        team: 'B' as const,
+        minute: g.minute || null,
+      })),
+    ]
+    goalsToCreate.forEach(g => {
+      newGoalCounts.set(g.userId, (newGoalCounts.get(g.userId) || 0) + 1)
+    })
+
     // Delete existing goals for this match
     await prisma.matchGoal.deleteMany({
       where: { matchId: params.id },
     })
 
     // Create new goals
-    const goalsToCreate = [
-      ...(validatedData.teamAGoals || []).map((g) => ({
-        matchId: params.id,
-        userId: g.userId,
-        team: 'A',
-        minute: g.minute || null,
-      })),
-      ...(validatedData.teamBGoals || []).map((g) => ({
-        matchId: params.id,
-        userId: g.userId,
-        team: 'B',
-        minute: g.minute || null,
-      })),
-    ]
-
     if (goalsToCreate.length > 0) {
       await prisma.matchGoal.createMany({
         data: goalsToCreate,
       })
+    }
+
+    // Update user's totalGoals for affected users
+    const allUserIds = new Set([...existingGoalCounts.keys(), ...newGoalCounts.keys()])
+    for (const userId of allUserIds) {
+      const existingCount = existingGoalCounts.get(userId) || 0
+      const newCount = newGoalCounts.get(userId) || 0
+      const difference = newCount - existingCount
+
+      if (difference !== 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            totalGoals: {
+              increment: difference,
+            },
+          },
+        })
+      }
     }
 
     // Create or update score

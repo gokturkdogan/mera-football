@@ -65,6 +65,10 @@ export async function GET(
                 showHeight: true,
                 showWeight: true,
                 showAge: true,
+                averageRating: true,
+                role: true,
+                totalMatches: true,
+                totalGoals: true,
               },
             },
           },
@@ -101,8 +105,23 @@ export async function GET(
     )
     const isOwner = organization.ownerId === payload.userId
 
+    // Enrich members with statistics from User table
+    const enrichedMembers = organization.members.map(member => ({
+      ...member,
+      user: {
+        ...member.user,
+        statistics: {
+          totalMatches: member.user.totalMatches || 0,
+          totalGoals: member.user.totalGoals || 0,
+        },
+      },
+    }))
+
     return NextResponse.json({ 
-      organization,
+      organization: {
+        ...organization,
+        members: enrichedMembers,
+      },
       userAccess: {
         isMember,
         isOwner,
@@ -201,6 +220,10 @@ export async function PATCH(
                 showHeight: true,
                 showWeight: true,
                 showAge: true,
+                averageRating: true,
+                role: true,
+                totalMatches: true,
+                totalGoals: true,
               },
             },
           },

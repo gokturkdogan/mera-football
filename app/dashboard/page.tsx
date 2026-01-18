@@ -264,7 +264,9 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Toplam Organizasyon</p>
                   <p className="text-4xl font-black text-green-600">
-                    {organizations.length}/3
+                    {isAdmin && adminPlan === 'FREE' 
+                      ? `${organizations.length}/1` 
+                      : organizations.length}
                   </p>
                 </div>
                 <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
@@ -783,45 +785,6 @@ export default function DashboardPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Quick Actions for Admin */}
-        {isAdmin && organizations.length > 0 && (
-          <Card className="mt-8 border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-green-600" />
-                Hızlı İşlemler
-              </CardTitle>
-              <CardDescription>
-                Sık kullanılan işlemler için hızlı erişim
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-4">
-                <Link href="/organization/new">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-green-400 hover:bg-green-50 transition-all">
-                    <Plus className="w-6 h-6 text-green-600" />
-                    <span className="font-semibold">Yeni Organizasyon</span>
-                  </Button>
-                </Link>
-                {adminPlan === 'FREE' && (
-                  <Link href="/payment">
-                    <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 border-yellow-400 hover:border-yellow-500 bg-yellow-50 hover:bg-yellow-100 transition-all">
-                      <Gem className="w-6 h-6 text-yellow-600" />
-                      <span className="font-semibold">Premium Ol</span>
-                    </Button>
-                  </Link>
-                )}
-                <Link href="/plans">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                    <FileText className="w-6 h-6 text-blue-600" />
-                    <span className="font-semibold">Planları Görüntüle</span>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
       </div>
     </div>

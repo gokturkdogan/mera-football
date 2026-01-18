@@ -61,6 +61,8 @@ model User {
   role          UserRole  @default(PLAYER)
   plan          AdminPlan @default(FREE) // Admin plan (FREE or PREMIUM)
   averageRating Float?    // Genel ortalama puan (tüm maçlardaki ortalamaların ortalaması)
+  totalMatches  Int       @default(0) // Toplam oynanan maç sayısı
+  totalGoals    Int       @default(0) // Toplam atılan gol sayısı
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

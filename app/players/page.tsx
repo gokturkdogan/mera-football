@@ -63,7 +63,7 @@ export default function PlayersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
-  const [ratingSortOrder, setRatingSortOrder] = useState<'none' | 'desc' | 'asc'>('none')
+  const [ratingSortOrder, setRatingSortOrder] = useState<'none' | 'desc' | 'asc'>('desc')
 
   useEffect(() => {
     fetchPlayers()

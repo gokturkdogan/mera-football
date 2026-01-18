@@ -168,6 +168,16 @@ export async function POST(
       },
     })
 
+    // Update user's totalMatches
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        totalMatches: {
+          increment: 1,
+        },
+      },
+    })
+
     return NextResponse.json({ roster: rosterEntry }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -246,6 +256,16 @@ export async function DELETE(
         matchId_userId: {
           matchId: params.id,
           userId,
+        },
+      },
+    })
+
+    // Update user's totalMatches
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        totalMatches: {
+          decrement: 1,
         },
       },
     })

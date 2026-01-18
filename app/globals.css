@@ -136,9 +136,7 @@
     transform: translateX(0);
     opacity: 1;
   }
-}
-
-@keyframes slideInTop {
+}@keyframes slideInTop {
   from {
     transform: translateY(-100%);
     opacity: 0;

@@ -23,6 +23,9 @@ import Navbar from '@/components/Navbar'
 import {
   Trophy,
   Star,
+  StarHalf,
+  Goal,
+  CalendarDays,
   Users,
   Circle,
   Crown,
@@ -53,7 +56,9 @@ import {
   Ruler,
   Weight,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mail,
+  EyeOff
 } from 'lucide-react'
 
 interface Organization {
@@ -90,6 +95,12 @@ interface Organization {
       showHeight: boolean
       showWeight: boolean
       showAge: boolean
+      averageRating: number | null
+      role: string
+      statistics?: {
+        totalMatches: number
+        totalGoals: number
+      }
     }
   }>
   matches: Array<{
@@ -143,6 +154,9 @@ export default function OrganizationPage() {
   const [joiningRequest, setJoiningRequest] = useState(false)
   const [processingMemberId, setProcessingMemberId] = useState<string | null>(null)
   const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null)
+  const [showAllMembersModal, setShowAllMembersModal] = useState(false)
+  const [ratingSortOrder, setRatingSortOrder] = useState<'none' | 'desc' | 'asc'>('none')
+  const [goalsSortOrder, setGoalsSortOrder] = useState<'none' | 'desc' | 'asc'>('none')
   const { showToast } = useToast()
   const facilityFormRef = useRef<HTMLDivElement>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
@@ -646,7 +660,33 @@ export default function OrganizationPage() {
   const isOwner = user?.id === organization?.owner.id
   const isMember = organization?.members?.some((m) => m.userId === user?.id && m.status === 'APPROVED') || false
   const hasPendingRequest = organization?.members?.some((m) => m.userId === user?.id && m.status === 'PENDING') || false
-  const approvedMembers = organization?.members?.filter((m) => m.status === 'APPROVED') || []
+  const approvedMembersRaw = organization?.members?.filter((m) => m.status === 'APPROVED') || []
+  
+  // Sort approved members based on sort orders
+  const approvedMembers = [...approvedMembersRaw].sort((a, b) => {
+    // Rating sort
+    if (ratingSortOrder !== 'none') {
+      if (a.user.averageRating === null && b.user.averageRating === null) {
+        // Both null, continue to next sort
+      } else if (a.user.averageRating === null) return 1
+      else if (b.user.averageRating === null) return -1
+      else {
+        const diff = ratingSortOrder === 'desc' 
+          ? (b.user.averageRating || 0) - (a.user.averageRating || 0)
+          : (a.user.averageRating || 0) - (b.user.averageRating || 0)
+        if (diff !== 0) return diff
+      }
+    }
+    
+    // Goals sort
+    if (goalsSortOrder !== 'none') {
+      const aGoals = a.user.statistics?.totalGoals || 0
+      const bGoals = b.user.statistics?.totalGoals || 0
+      return goalsSortOrder === 'desc' ? bGoals - aGoals : aGoals - bGoals
+    }
+    
+    return 0
+  })
   const pendingMembers = organization?.members?.filter((m) => m.status === 'PENDING') || []
 
   // Member carousel functions
@@ -1470,15 +1510,26 @@ export default function OrganizationPage() {
         {approvedMembers.length > 0 && (
           <Card className="mb-6 border-2 hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Users className="w-6 h-6 text-green-600" />
-                Organizasyon Üyeleri ({approvedMembers.length})
-              </CardTitle>
-              <CardDescription className="text-base">
-                {isOwner 
-                  ? 'Organizasyonunuzun aktif üyeleri'
-                  : 'Bu organizasyonun aktif üyeleri'}
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
+                    <span className="truncate">Organizasyon Üyeleri ({approvedMembers.length})</span>
+                  </CardTitle>
+                  <CardDescription className="text-sm sm:text-base mt-1">
+                    {isOwner 
+                      ? 'Organizasyonunuzun aktif üyeleri'
+                      : 'Bu organizasyonun aktif üyeleri'}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAllMembersModal(true)}
+                  className="text-green-600 hover:text-green-700 hover:bg-green-50 font-medium text-sm sm:text-base shrink-0 w-full sm:w-auto justify-center sm:justify-start"
+                >
+                  Tamamını Görüntüle
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {/* Desktop Carousel */}
@@ -2579,6 +2630,281 @@ export default function OrganizationPage() {
           </Dialog>
         </>
       )}
+
+      {/* All Members Modal */}
+      <Dialog 
+        open={showAllMembersModal} 
+        onOpenChange={(open) => {
+          setShowAllMembersModal(open)
+          if (!open) {
+            setRatingSortOrder('none')
+            setGoalsSortOrder('none')
+          }
+        }}
+      >
+        <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Users className="w-5 h-5 text-green-600" />
+              Tüm Üyeler ({approvedMembers.length})
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Organizasyondaki tüm onaylı üyeler ve bilgileri
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto py-4">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">Oyuncu</th>
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">İletişim</th>
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">Mevki</th>
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">Güçlü Ayak</th>
+                    <th 
+                      className="text-left p-2 text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                      onClick={() => {
+                        if (ratingSortOrder === 'none') {
+                          setRatingSortOrder('desc')
+                          setGoalsSortOrder('none')
+                        } else if (ratingSortOrder === 'desc') {
+                          setRatingSortOrder('asc')
+                        } else {
+                          setRatingSortOrder('none')
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Ortalama Rating</span>
+                        {ratingSortOrder === 'desc' && (
+                          <ChevronDown className="w-3 h-3 text-gray-600" />
+                        )}
+                        {ratingSortOrder === 'asc' && (
+                          <ChevronUp className="w-3 h-3 text-gray-600" />
+                        )}
+                        {ratingSortOrder === 'none' && (
+                          <div className="w-3 h-3 flex flex-col items-center justify-center opacity-60">
+                            <ChevronUp className="w-2 h-2 text-gray-500" />
+                            <ChevronDown className="w-2 h-2 text-gray-500 -mt-0.5" />
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left p-2 text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                      onClick={() => {
+                        if (goalsSortOrder === 'none') {
+                          setGoalsSortOrder('desc')
+                          setRatingSortOrder('none')
+                        } else if (goalsSortOrder === 'desc') {
+                          setGoalsSortOrder('asc')
+                        } else {
+                          setGoalsSortOrder('none')
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Gol Sayısı</span>
+                        {goalsSortOrder === 'desc' && (
+                          <ChevronDown className="w-3 h-3 text-gray-600" />
+                        )}
+                        {goalsSortOrder === 'asc' && (
+                          <ChevronUp className="w-3 h-3 text-gray-600" />
+                        )}
+                        {goalsSortOrder === 'none' && (
+                          <div className="w-3 h-3 flex flex-col items-center justify-center opacity-60">
+                            <ChevronUp className="w-2 h-2 text-gray-500" />
+                            <ChevronDown className="w-2 h-2 text-gray-500 -mt-0.5" />
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">Oynanan Maç</th>
+                    <th className="text-left p-2 text-sm font-semibold text-gray-900">Rol</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approvedMembers.map((member, index) => (
+                    <tr
+                      key={member.id}
+                      className={`border-b hover:bg-green-50/50 transition-colors ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                      }`}
+                    >
+                      {/* Player Info */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-shrink-0">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md overflow-hidden ${
+                              member.user.role === 'ADMIN' 
+                                ? 'bg-gradient-to-br from-yellow-500 to-orange-600' 
+                                : 'bg-gradient-to-br from-green-500 to-emerald-600'
+                            }`}>
+                              {member.user.avatarUrl ? (
+                                <img 
+                                  src={member.user.avatarUrl} 
+                                  alt={member.user.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                member.user.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            {member.user.role === 'ADMIN' && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white">
+                                <Crown className="w-2 h-2 text-yellow-900" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-semibold text-gray-900 truncate">{member.user.name}</span>
+                              {member.user.role === 'ADMIN' ? (
+                                <Crown className="w-3 h-3 text-yellow-600 flex-shrink-0" title="Yönetici" />
+                              ) : (
+                                <User className="w-3 h-3 text-green-600 flex-shrink-0" title="Oyuncu" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Mail className="w-2.5 h-2.5 text-gray-400" />
+                              <span className="text-xs text-gray-500 truncate">{member.user.email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Contact */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 text-blue-600" />
+                          {member.user.showPhone && member.user.phone ? (
+                            <span className="text-xs text-gray-900 font-medium">{member.user.phone}</span>
+                          ) : (
+                            <div className="flex items-center gap-1 text-gray-400">
+                              <EyeOff className="w-2.5 h-2.5" />
+                              <span className="text-xs italic">Paylaşılmamış</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Position */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          <Target className="w-3 h-3 text-orange-600" />
+                          {member.user.showPosition && member.user.position ? (
+                            <span className="text-xs text-gray-900 font-medium">{member.user.position}</span>
+                          ) : (
+                            <div className="flex items-center gap-1 text-gray-400">
+                              <EyeOff className="w-2.5 h-2.5" />
+                              <span className="text-xs italic">Paylaşılmamış</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Strong Foot */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          <Footprints className="w-3 h-3 text-yellow-600" />
+                          {member.user.showStrongFoot && member.user.strongFoot ? (
+                            <span className="text-xs text-gray-900 font-medium">{member.user.strongFoot}</span>
+                          ) : (
+                            <div className="flex items-center gap-1 text-gray-400">
+                              <EyeOff className="w-2.5 h-2.5" />
+                              <span className="text-xs italic">Paylaşılmamış</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Average Rating */}
+                      <td className="p-2">
+                        {member.user.averageRating !== null && member.user.averageRating !== undefined ? (
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => {
+                              const rating = member.user.averageRating!
+                              const isFilled = star <= Math.floor(rating)
+                              const isHalfFilled = star === Math.ceil(rating) && rating % 1 >= 0.5 && rating % 1 < 1
+                              return isHalfFilled ? (
+                                <StarHalf
+                                  key={star}
+                                  className="w-3 h-3 text-yellow-500 fill-yellow-500"
+                                />
+                              ) : (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 ${
+                                    isFilled
+                                      ? 'text-yellow-500 fill-yellow-500'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">-</span>
+                        )}
+                      </td>
+
+                      {/* Total Goals */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          <Goal className="w-3 h-3 text-red-600" />
+                          <span className="text-xs text-gray-900 font-medium">
+                            {member.user.statistics?.totalGoals || 0}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Total Matches */}
+                      <td className="p-2">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays className="w-3 h-3 text-blue-600" />
+                          <span className="text-xs text-gray-900 font-medium">
+                            {member.user.statistics?.totalMatches || 0}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Role */}
+                      <td className="p-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 w-fit ${
+                          member.user.role === 'ADMIN'
+                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        }`}>
+                          {member.user.role === 'ADMIN' ? (
+                            <>
+                              <Crown className="w-2.5 h-2.5" />
+                              Yönetici
+                            </>
+                          ) : (
+                            <>
+                              <User className="w-2.5 h-2.5" />
+                              Oyuncu
+                            </>
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAllMembersModal(false)}
+              className="border-2 border-gray-300 hover:border-gray-400"
+            >
+              Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
