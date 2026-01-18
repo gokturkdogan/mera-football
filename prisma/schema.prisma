@@ -18,6 +18,7 @@ enum UserRole {
 enum AdminPlan {
   FREE
   PREMIUM
+  PREMIUM_PLUS
 }
 
 enum MatchStatus {

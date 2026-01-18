@@ -1,9 +1,29 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Target, Mail, Clock, Home, BookOpen, LogIn, UserPlus } from 'lucide-react'
 
 export default function Footer() {
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) {
+          return res.json()
+        }
+        return null
+      })
+      .then((data) => {
+        if (data) {
+          setUser(data.user)
+        }
+      })
+      .catch(() => {
+        // Not logged in
+      })
+  }, [])
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white border-t border-gray-700 mt-auto">
       <div className="container mx-auto px-4 py-12 md:py-16">
@@ -41,21 +61,15 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="text-gray-400 hover:text-green-400 transition-colors flex items-center gap-2 group">
+                <Link href="/guide" className="text-gray-400 hover:text-green-400 transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 bg-gray-600 rounded-full group-hover:bg-green-400 transition-colors"></span>
-                  Nasıl Çalışır?
+                  Kullanım Kılavuzu
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="text-gray-400 hover:text-green-400 transition-colors flex items-center gap-2 group">
+                <Link href="/plans" className="text-gray-400 hover:text-green-400 transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 bg-gray-600 rounded-full group-hover:bg-green-400 transition-colors"></span>
-                  Giriş Yap
-                </Link>
-              </li>
-              <li>
-                <Link href="/register" className="text-gray-400 hover:text-green-400 transition-colors flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 bg-gray-600 rounded-full group-hover:bg-green-400 transition-colors"></span>
-                  Kayıt Ol
+                  Premium Programı
                 </Link>
               </li>
             </ul>

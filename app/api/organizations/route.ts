@@ -238,8 +238,9 @@ export async function POST(request: NextRequest) {
       })
 
       if (existingOrganizations >= limits.maxOrganizations) {
+        const planName = adminPlan === 'FREE' ? 'Ücretsiz' : adminPlan === 'PREMIUM' ? 'Premium' : 'Premium Plus'
         return NextResponse.json(
-          { error: `FREE plan allows maximum ${limits.maxOrganizations} organization` },
+          { error: `${planName} plan maksimum ${limits.maxOrganizations} organizasyon${limits.maxOrganizations > 1 ? 'a' : ''} izin verir` },
           { status: 400 }
         )
       }

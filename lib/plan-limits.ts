@@ -16,7 +16,12 @@ export const PLAN_LIMITS: Record<AdminPlan, PlanLimits> = {
   PREMIUM: {
     maxPlayers: 999999,
     maxMatchesLifetime: 999999,
-    maxOrganizations: 999999,
+    maxOrganizations: 3,
+  },
+  PREMIUM_PLUS: {
+    maxPlayers: 999999,
+    maxMatchesLifetime: 999999,
+    maxOrganizations: 5,
   },
 }
 
@@ -75,9 +80,10 @@ export async function checkOrganizationLimits(
 
   if (action === 'ADD_PLAYER') {
     if (organization._count.members >= limits.maxPlayers) {
+      const planName = adminPlan === 'FREE' ? 'Ücretsiz' : adminPlan === 'PREMIUM' ? 'Premium' : 'Premium Plus'
       return {
         allowed: false,
-        reason: `Maximum ${limits.maxPlayers} players allowed for ${adminPlan} plan`,
+        reason: `${planName} plan için maksimum ${limits.maxPlayers} oyuncu izni verilir`,
       }
     }
   }
@@ -91,9 +97,10 @@ export async function checkOrganizationLimits(
       })
 
       if (totalMatches >= limits.maxMatchesLifetime) {
+        const planName = adminPlan === 'FREE' ? 'Ücretsiz' : adminPlan === 'PREMIUM' ? 'Premium' : 'Premium Plus'
         return {
           allowed: false,
-          reason: `Maximum ${limits.maxMatchesLifetime} match allowed for ${adminPlan} plan`,
+          reason: `${planName} plan için maksimum ${limits.maxMatchesLifetime} maç izni verilir`,
         }
       }
     }

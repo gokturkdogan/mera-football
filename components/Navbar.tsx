@@ -12,14 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Menu, X, Building2, Users, CreditCard, User, LayoutDashboard, LogOut, Target, Home } from 'lucide-react'
+import { Menu, X, Building2, Users, CreditCard, User, LayoutDashboard, LogOut, Target, Home, BookOpen } from 'lucide-react'
 
 // Sayfa başlıkları mapping
 const pageTitles: Record<string, string> = {
   '/': 'Ana Sayfa',
   '/organizations': 'Organizasyonlar',
   '/players': 'Oyuncular',
-  '/plans': 'Planlar',
+  '/plans': 'Premium Programı',
   '/dashboard': 'Organizasyonlarım',
   '/profile': 'Profil',
   '/login': 'Giriş Yap',
@@ -27,6 +27,7 @@ const pageTitles: Record<string, string> = {
   '/organization/new': 'Yeni Organizasyon',
   '/match/new': 'Yeni Maç',
   '/payment': 'Ödeme',
+  '/guide': 'Kullanım Kılavuzu',
 }
 
 // Dinamik sayfa başlıklarını tespit et
@@ -139,7 +140,18 @@ export default function Navbar() {
                 }`}
               >
                 <CreditCard className="w-4 h-4" />
-                Planlar
+                Premium Programı
+              </Link>
+              <Link 
+                href="/guide" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  isActive('/guide')
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                Kullanım Kılavuzu
               </Link>
             </nav>
           </div>
@@ -393,7 +405,19 @@ export default function Navbar() {
                     }`}
                   >
                     <CreditCard className="w-5 h-5" />
-                    Planlar
+                    Premium Programı
+                  </Link>
+                  <Link
+                    href="/guide"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                      isActive('/guide')
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
+                        : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    Kullanım Kılavuzu
                   </Link>
                   <Link
                     href="/profile"
@@ -481,7 +505,19 @@ export default function Navbar() {
                   }`}
                 >
                   <CreditCard className="w-5 h-5" />
-                  Planlar
+                  Premium Programı
+                </Link>
+                <Link
+                  href="/guide"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                    isActive('/guide')
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
+                      : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
+                  }`}
+                >
+                  <BookOpen className="w-5 h-5" />
+                  Kullanım Kılavuzu
                 </Link>
               </div>
             )}
