@@ -3,9 +3,10 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const matchId = 'cmkjpf2kz001g5s02oul57l9z'
+  const matchId = 'cmkjpyxl80001yq4korr4h91x'
+  const limit = 10 // Sadece 10 kişi
 
-  console.log(`Accepting all players for match: ${matchId}\n`)
+  console.log(`Accepting ${limit} players for match: ${matchId}\n`)
   console.log('='.repeat(60))
 
   // 1. Find match and organization
@@ -27,6 +28,7 @@ async function main() {
                 },
               },
             },
+            take: limit, // Sadece ilk 10 kişi
           },
         },
       },
@@ -39,9 +41,9 @@ async function main() {
   }
 
   console.log(`✓ Match found: ${match.organization.name}`)
-  console.log(`✓ Organization members: ${match.organization.members.length}\n`)
+  console.log(`✓ Organization members to accept: ${match.organization.members.length}\n`)
 
-  // 2. Accept attendance for all approved members
+  // 2. Accept attendance for limited members
   let acceptedCount = 0
   let skippedCount = 0
 
