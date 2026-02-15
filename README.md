@@ -172,7 +172,7 @@ MeraFootball, halısaha futbol organizasyonları için modern ve kullanıcı dos
 
 - **shadcn/ui** - Accessible ve özelleştirilebilir component'ler
 - **Radix UI** - Unstyled, accessible component primitives
-- **TailwindCSS** - Utility-first CSS framework
+- **TailwindCSS** - Utility-first CSS framework 
 
 ## 📝 Notlar
 
