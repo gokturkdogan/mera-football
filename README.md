@@ -129,7 +129,7 @@ MeraFootball, halısaha futbol organizasyonları için modern ve kullanıcı dos
 - `DELETE /api/matches/[id]/roster` - Kadrodan oyuncu çıkar
 - `POST /api/matches/[id]/score` - Skor gir
 - `GET /api/matches/[id]/ratings` - Puanlama listesi
-- `POST /api/matches/[id]/ratings` - Oyuncu puanla
+- `POST /api/matches/[id]/ratings` - Oyuncu puanla 
 
 ### 👥 Players
 - `GET /api/players` - Tüm oyuncular listesi
