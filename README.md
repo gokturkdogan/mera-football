@@ -57,7 +57,7 @@ MeraFootball, halısaha futbol organizasyonları için modern ve kullanıcı dos
 - **🔷 Prisma ORM** - Modern database toolkit
 - **📊 Prisma Client** - Type-safe database client
 
-### 💳 Ödeme
+### 💳 Ödeme 
 - **💳 iyzico** - Ödeme gateway entegrasyonu
 
 ### 🎨 UI Kütüphaneleri
