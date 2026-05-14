@@ -3,7 +3,7 @@
 MeraFootball, halısaha futbol organizasyonları için modern ve kullanıcı dostu bir web platformudur. Oyuncular ve yöneticiler için özel tasarlanmış özelliklerle, futbol organizasyonlarınızı kolayca yönetin. 
 
 ## 🎯 Özellikler
-
+  
 ### 👥 Oyuncular İçin
 - ✅ Ücretsiz kayıt ve kullanım
 - ✅ Maksimum 2 organizasyona katılma
